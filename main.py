@@ -10,6 +10,7 @@ from pkcs11 import Attribute
 from typing import Optional
 from pydantic import BaseModel, Field
 import codecs
+import base64
 
 app = FastAPI()
 with open('conf.yml','r') as yamlfile:
@@ -21,11 +22,23 @@ class SearchObject(BaseModel):
     objtype: Optional[str] = None
     objid: Optional[str] = None
 
+class DataSearchObject(BaseModel):
+    label: Optional[str] = None
+    objtype: Optional[str] = None
+    objid: Optional[str] = None
+    data: Optional[str] = None
+    mechanism: Optional[str] = None
+    mechanismparam: Optional[list] = None
+
 class RSAGenParam(BaseModel):
     label: Optional[str] = None
     objid: Optional[str] = None
     bits: Optional[int] = 2048
-    public_exponent: Optional[int] = 65537
+
+class AESGenParam(BaseModel):
+    label: Optional[str] = None
+    objid: Optional[str] = None
+    bits: Optional[int] = 2048
 
 class ECGenParam(BaseModel):
     label: Optional[str] = None
@@ -110,7 +123,37 @@ class HSMModule:
             obj.destroy()
             return {'removed': 1}
         return {'removed': 0}
-   
+
+    def encrypt(self, name, label, so: DataSearchObject):
+        return self.deencrypt("encrypt", name, label, so)
+
+    def decrypt(self, name, label, so: DataSearchObject):
+        return self.deencrypt("decrypt", name, label, so)
+
+    def deencrypt(self, thefunc, name, label, so: DataSearchObject):
+        attrs = self.so_to_attr(so)
+        data = base64.b64decode(so.data[7:]) if so.data.startswith('base64:') else so.data
+        print(data)
+        objs = list(self.modules[name][label].get_objects(attrs))
+        if objs:
+            obj = objs[0]
+            toexec = getattr(obj, thefunc)
+            print(toexec)
+            if so.mechanism in ['RSA_PKCS_OAEP', 'RSA_PKCS_PSS'] and so.mechanismparam:
+                return base64.b64encode(toexec(data, mechanism=getattr(pkcs11.Mechanism, so.mechanism),
+                                   mechanism_param=(getattr(pkcs11.Mechanism,so.mechanismparam[0]),
+                                                    getattr(pkcs11.MFT,so.mechanismparam[1]),
+                                                    so.mechanismparam[2]
+                                                   )
+                           ))
+            if so.mechanism:
+                return base64.b64encode(toexec(data, mechanism=getattr(pkcs11.Mechanism, so.mechanism)))
+            retdata = toexec(data)
+            print(retdata)
+            return base64.b64encode(retdata)
+            return base64.b64encode(toexec(data))
+        return {}
+
     def getobjdetails(self, name, label, so: SearchObject):
         attrs = self.so_to_attr(so)
         return [self.objtoobj(obj) for obj in self.modules[name][label].get_objects(attrs)]
@@ -191,15 +234,23 @@ async def getobjdetails(module,slot,so: SearchObject):
     return {'module': module, "slot": slot, "objects": hsm.getobjdetails(module,slot,so)}
 
 @app.post("/hsm/{module}/{slot}/generate/rsa")
-async def getobjdetails(module,slot,rsagen: RSAGenParam):
+async def genrsa(module,slot,rsagen: RSAGenParam):
     if not hsm.is_module(module):
         return {'error': 1, "message": "No such module"}
     if not hsm.is_slot(module, slot):
         return {'error': 1, "message": "No such slot"}
     return {'module': module, "slot": slot, "result": hsm.gen_rsa(module,slot,rsagen)}
 
+@app.post("/hsm/{module}/{slot}/generate/aes")
+async def genrsa(module,slot,aesgen: AESGenParam):
+    if not hsm.is_module(module):
+        return {'error': 1, "message": "No such module"}
+    if not hsm.is_slot(module, slot):
+        return {'error': 1, "message": "No such slot"}
+    return {'module': module, "slot": slot, "result": hsm.gen_aes(module,slot,aesgen)}
+
 @app.post("/hsm/{module}/{slot}/generate/ec")
-async def getobjdetails(module,slot,ecgen: ECGenParam):
+async def genec(module,slot,ecgen: ECGenParam):
     if not hsm.is_module(module):
         return {'error': 1, "message": "No such module"}
     if not hsm.is_slot(module, slot):
@@ -207,10 +258,37 @@ async def getobjdetails(module,slot,ecgen: ECGenParam):
     return {'module': module, "slot": slot, "result": hsm.gen_ec(module,slot,ecgen)}
 
 @app.post("/hsm/{module}/{slot}/destroy")
-async def getobjdetails(module,slot,so: SearchObject):
+async def destroyobj(module,slot,so: SearchObject):
     if not hsm.is_module(module):
         return {'error': 1, "message": "No such module"}
     if not hsm.is_slot(module, slot):
         return {'error': 1, "message": "No such slot"}
     return {'module': module, "slot": slot, "result": hsm.destroyobj(module,slot,so)}
+
+@app.post("/hsm/{module}/{slot}/encrypt")
+async def encrypt(module,slot,so: DataSearchObject):
+    if not hsm.is_module(module):
+        return {'error': 1, "message": "No such module"}
+    if not hsm.is_slot(module, slot):
+        return {'error': 1, "message": "No such slot"}
+    return {'module': module, "slot": slot, "result": hsm.encrypt(module,slot,so)}
+
+@app.post("/hsm/{module}/{slot}/decrypt")
+async def encrypt(module,slot,so: DataSearchObject):
+    if not hsm.is_module(module):
+        return {'error': 1, "message": "No such module"}
+    if not hsm.is_slot(module, slot):
+        return {'error': 1, "message": "No such slot"}
+    return {'module': module, "slot": slot, "result": hsm.decrypt(module,slot,so)}
+
+
+# import pkcs11
+# import pkcs11.util
+# import pkcs11.util.rsa
+# from pkcs11.util.ec import encode_named_curve_parameters
+# import asn1crypto.pem
+# from asn1crypto.keys import ECDomainParameters
+# lib = pkcs11.lib('/usr/lib64/pkcs11/libsofthsm2.so')
+# token = lib.get_token(token_label='HSM-000')
+# session = token.open(rw=True, user_pin='1234')
 
