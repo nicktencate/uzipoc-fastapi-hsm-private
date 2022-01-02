@@ -1,9 +1,6 @@
 #!/usr/bin/env python3
-import asyncio
 import yaml
 from fastapi import FastAPI, HTTPException
-from hypercorn.asyncio import serve
-from hypercorn.config import Config
 
 from .modules.hsm import HSMModule
 from .modules.model import Modules, Slots, SearchObject, DataSearchObject, RSAGenParam, AESGenParam, ECGenParam
@@ -99,12 +96,6 @@ async def wrap(module: Modules, slot: Slots, so: DataSearchObject):
 async def unwrap(module: Modules, slot: Slots, so: DataSearchObject):
     doesexist(module, slot)
     return {'module': module, "slot": slot, "result": hsm.unwrap(module, slot, so)}
-
-if __name__ == '__main__':
-
-    config = Config()
-    config.bind = ["localhost:8000"]  # As an example configuration setting
-    asyncio.run(serve(app,config))
 
 # import pkcs11
 # import pkcs11.util

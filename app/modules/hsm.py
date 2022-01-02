@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-import sys
 import codecs
 import base64
 import pkcs11
+
 import pkcs11.util
 import pkcs11.util.rsa
+import pkcs11.types
 from pkcs11 import Attribute
 from pkcs11.util.ec import encode_named_curve_parameters
 import asn1crypto.pem
@@ -26,10 +27,6 @@ class HSMModule:
 
     def loadlib(self, name, hsm_module, slots):
         if hsm_module not in self.libs:
-            try:
-                del sys.modules["pkcs11"]
-            except KeyError:
-                pass
             self.libs[name] = pkcs11.lib(hsm_module)
             for slot in slots:
                 label = slot['slot']
