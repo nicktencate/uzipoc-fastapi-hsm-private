@@ -1,0 +1,9 @@
+.venv
+.vscode
+.idea
+*.pyc
+__pycache__
+.env
+*.key
+*.swp
+secrets/

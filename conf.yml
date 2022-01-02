@@ -24,6 +24,11 @@ modules:
       pinfile: secrets/softhsm-000.pin
     - slot: HSM-001
       pinfile: secrets/softhsm-001.pin
+#  - name: yubikey
+#    module: /usr/lib64/libykcs11.so.2.2.0
+#    slots:
+#    - slot: "YubiKey PIV #9986290"
+#      pinfile: secrets/yubikey.pin
 
 ca:
   ca: clients/ca.pem

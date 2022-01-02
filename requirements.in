@@ -1,0 +1,9 @@
+# Dependency management
+pip-tools
+
+# webdingen
+pydantic
+hypercorn
+fastapi
+python-pkcs11
+pyyaml
