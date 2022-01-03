@@ -32,8 +32,7 @@ class HSMModule:
                 label = slot['slot']
                 pin = slot['pinfile']
                 token = self.libs[name].get_token(token_label=label)
-                with token.open(rw=True, user_pin=open(pin, 'r', encoding='utf-8').read().rstrip()) as thetoken:
-                    self.modules[name][label] = thetoken
+                self.modules[name][label] = token.open(rw=True, user_pin=open(pin, 'r', encoding='utf-8').read().rstrip())
 
     def hsmlist(self):
         return list(self.modules)
@@ -118,6 +117,9 @@ class HSMModule:
         return self.deencrypt("decrypt", name, label, so)
 
     def deencrypt(self, thefunc: str, name: str, label: str, so: DataSearchObject) -> str:
+        print(self.modules)
+        for mod in self.modules['softhsm']:
+            print(self.modules['softhsm'][mod])
         attrs = self.so_to_attr(so)
         data = base64.b64decode(so.data)
         objs = list(self.modules[name][label].get_objects(attrs))
