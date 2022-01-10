@@ -1,20 +1,18 @@
 #!/usr/bin/env python3
-import yaml
-from fastapi import FastAPI, HTTPException
 from typing import Union
 
-from app.hsm import HSMModule
-from app.model import Modules, Slots, SearchObject, RSAGenParam, AESGenParam, ECGenParam, DecryptEncryptObject, VerifyRSAObject, VerifyAESObject, SignRSAObject, SignAESObject
+import yaml
+from fastapi import FastAPI, HTTPException
+
+from modules.hsm import HSMModule
+from modules.model import (Modules, Slots, SearchObject, RSAGenParam, AESGenParam, ECGenParam,
+                           DecryptEncryptObject, VerifyRSAObject, VerifyAESObject, SignRSAObject,
+                           SignAESObject)
 
 with open('conf.yml', 'r', encoding='utf-8') as yamlfile:
     config = yaml.load(yamlfile ,Loader=yaml.Loader)
 
 hsm = HSMModule(config)
-
-#for module in hsm.modules.keys():
-#  setattr(Modules, module, module)
-#
-#print(Modules.softhsm)
 
 app = FastAPI()
 
@@ -84,12 +82,12 @@ async def decrypt(module: Modules, slot: Slots, so: DecryptEncryptObject):
     return {'module': module, "slot": slot, "result": hsm.decrypt(module, slot, so)}
 
 @app.post("/hsm/{module}/{slot}/sign")
-async def sign(module: Modules, slot: Slots, so: Union[VerifyRSAObject, VerifyAESObject]):
+async def sign(module: Modules, slot: Slots, so: Union[SignRSAObject, SignAESObject]):
     doesexist(module, slot)
     return {'module': module, "slot": slot, "result": hsm.sign(module, slot, so)}
 
 @app.post("/hsm/{module}/{slot}/verify")
-async def verify(module: Modules, slot: Slots, so: SearchObject):
+async def verify(module: Modules, slot: Slots, so: Union[VerifyRSAObject, VerifyAESObject]):
     doesexist(module, slot)
     return {'module': module, "slot": slot, "result": hsm.verify(module, slot, so)}
 
