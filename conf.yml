@@ -17,13 +17,18 @@ modules:
 #      pinfile: secrets/yubikey-002.pin
 #    - slot: HSM-003
 #      pinfile: secrets/yubikey-003.pin
-  - name: softhsm
-    module: /usr/lib64/pkcs11/libsofthsm2.so
+  - name: utimaco
+    module: /home/mendel/hsm/libcs_pkcs11_R2.so
     slots: 
-    - slot: HSM-000
-      pinfile: secrets/softhsm-000.pin
-    - slot: HSM-001
-      pinfile: secrets/softhsm-001.pin
+    - slot: Label
+      pinfile: secrets/utimaco-000.pin
+#  - name: softhsm
+#    module: /usr/lib64/pkcs11/libsofthsm2.so
+#    slots: 
+#    - slot: HSM-000
+#      pinfile: secrets/softhsm-000.pin
+#    - slot: HSM-001
+#      pinfile: secrets/softhsm-001.pin
 #  - name: yubikey
 #    module: /usr/lib64/libykcs11.so.2.2.0
 #    slots:

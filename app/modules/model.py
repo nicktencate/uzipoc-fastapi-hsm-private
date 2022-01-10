@@ -7,13 +7,10 @@ class HSMError(Exception):
     pass
 
 class Modules(str, Enum):
-    SOFTHSM = "softhsm"
-    YUBIKEY = "yubikey"
+    pass
 
 class Slots(str, Enum):
-    HSM0 = "HSM-000"
-    HSM1 = "HSM-001"
-    YK1 = "YubiKey PIV #9986290"
+    pass
 
 class RSAbits(int, Enum):
     B11 = 2**11
@@ -38,6 +35,7 @@ class ObjectTypes(str, Enum):
     PRIVATE: "PRIVATE_KEY"
     SECRET: "SECRET_KEY"
     DATA: "DATA"
+    CERTIFICATE: "CERTIFICATE"
 
 class SearchObject(BaseModel):  # pylint: disable=too-few-public-methods
     label: Optional[str] = None

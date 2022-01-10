@@ -166,7 +166,7 @@ class HSMModule:
             toexec = getattr(obj, thefunc)
             if obj.key_type==pkcs11.KeyType.RSA:
                 mechanism_param = None
-                if so.mechanism in ['RSA_PKCS_OAEP', 'RSA_PKCS_PSS'] and so.mechanismparam:
+                if so.mechanism in ['RSA_PKCS_OAEP', 'RSA_PKCS_PSS'] and so.hashmethod:
                     if MethodSize().map(so.hashmethod) is not len(data):
                         raise HSMError("Data length does not match hash method")
                     mechanism_param = (MethodMechanism().map(so.hashmethod), MethodMGF().map(so.hashmethod), MethodSize().map(so.hashmethod))
