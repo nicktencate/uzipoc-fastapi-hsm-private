@@ -3,10 +3,9 @@ from typing import Union
 
 import yaml
 from fastapi import FastAPI, HTTPException
-from fastapi.openapi.utils import get_openapi
 
 from .modules.hsm import HSMModule
-from .modules.model import (Modules, Slots, SearchObject, RSAGenParam, AESGenParam, ECGenParam,
+from .modules.model import (BaseModules, BaseSlots, SearchObject, RSAGenParam, AESGenParam, ECGenParam,
                            DecryptEncryptObject, VerifyRSAObject, VerifyAESObject, SignRSAObject,
                            SignAESObject)
 
@@ -15,31 +14,13 @@ with open('conf.yml', 'r', encoding='utf-8') as yamlfile:
 
 hsm = HSMModule(config)
 
+Modules = BaseModules("Modules", {x: x for x in hsm.modules.keys()})
+Slots = BaseSlots("Slots", {item: item for module in hsm.modules for item in hsm.modules[module]})
+
 app = FastAPI()
 
 
-def custom_openapi():
-    if app.openapi_schema:
-        return app.openapi_schema
-    openapi_schema = get_openapi(
-        title="Custom title",
-        version="2.5.0",
-        description="This is a very custom OpenAPI schema",
-        routes=app.routes,
-    )
-    openapi_schema["info"]["x-logo"] = {
-        "url": "https://fastapi.tiangolo.com/img/logo-margin/logo-teal.png"
-    }
-    openapi_schema['components']['schemas']['Modules']['enum'] = [x for x in vars(Modules) if not x.startswith("_")]
-    openapi_schema['components']['schemas']['Slots']['enum'] = [x for x in vars(Slots) if not x.startswith("_")]
-
-    app.openapi_schema = openapi_schema
-    return app.openapi_schema
-
-[setattr(Modules,x,x) for x in hsm.modules.keys()]
-[setattr(Slots,item,item) for module in hsm.modules for item in hsm.modules[module]]
-
-app.openapi = custom_openapi
+#app.openapi = custom_openapi
 
 @app.get("/")
 async def root():

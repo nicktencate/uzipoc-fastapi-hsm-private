@@ -201,7 +201,7 @@ class HSMModule:
 
     def list_slot_mech(self, name, label):
         try:
-            return [str(x).split(".")[1] for x in self.modules[name][label].token.slot.get_mechanisms()]
+            return [str(x).split(".")[1] if '.' in str(x) else "mechtype-"+hex(x) for x in self.modules[name][label].token.slot.get_mechanisms()]
         except Exception as mye:
             raise HSMError(mye) from mye
 

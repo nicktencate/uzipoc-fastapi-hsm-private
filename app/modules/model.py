@@ -6,10 +6,10 @@ from pydantic import BaseModel # pylint: disable=no-name-in-module
 class HSMError(Exception):
     pass
 
-class Modules(str, Enum):
+class BaseModules(str, Enum):
     pass
 
-class Slots(str, Enum):
+class BaseSlots(str, Enum):
     pass
 
 class RSAbits(int, Enum):
