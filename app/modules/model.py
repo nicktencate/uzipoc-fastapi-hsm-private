@@ -30,16 +30,16 @@ class HashMethod(str, Enum):
     SHA384 = "sha384"
     SHA512 = "sha512"
 
-class ObjectTypes(str, Enum):
-    PUBLIC: "PUBLIC_KEY"
-    PRIVATE: "PRIVATE_KEY"
-    SECRET: "SECRET_KEY"
-    DATA: "DATA"
-    CERTIFICATE: "CERTIFICATE"
+class SearchObjectEnum(str, Enum):
+    PUBLIC = "PUBLIC_KEY"
+    PRIVATE = "PRIVATE_KEY"
+    SECRET = "SECRET_KEY"
+    DATA = "DATA"
+    CERTIFICATE = "CERTIFICATE"
 
 class SearchObject(BaseModel):  # pylint: disable=too-few-public-methods
     label: Optional[str] = None
-    objtype: Optional[ObjectTypes] = None
+    objtype: Optional[SearchObjectEnum] = None
     objid: Optional[str] = None
 
 class DecryptEncryptObject(SearchObject):  # pylint: disable=too-few-public-methods
