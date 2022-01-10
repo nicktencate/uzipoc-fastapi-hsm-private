@@ -1,18 +1,53 @@
 #!/usr/bin/env python3
 import codecs
 import base64
-import pkcs11
+import hashlib
 
+import pkcs11
 import pkcs11.util
 import pkcs11.util.rsa
 import pkcs11.types
 from pkcs11 import Attribute
 from pkcs11.util.ec import encode_named_curve_parameters
+
 import asn1crypto.pem
 from asn1crypto.keys import ECDomainParameters
 
 
-from .model import HSMError, SearchObject, DataSearchObject, RSAGenParam, AESGenParam, ECGenParam
+from .model import HSMError, SearchObject, RSAGenParam, AESGenParam, ECGenParam, HashMethod
+
+class MethodMechanism:
+    def map(self, method: HashMethod):
+        maps = { HashMethod.SHA1: pkcs11.Mechanism.SHA_1,
+                 HashMethod.SHA256: pkcs11.Mechanism.SHA256,
+                 HashMethod.SHA384: pkcs11.Mechanism.SHA384,
+                 HashMethod.SHA512: pkcs11.Mechanism.SHA512,
+               }
+        if method in maps:
+            return maps[method]
+        raise HSMError("Unsupported method")
+
+class MethodMGF:
+    def map(self, method: HashMethod):
+        maps = { HashMethod.SHA1: pkcs11.MGF.SHA1,
+                 HashMethod.SHA256: pkcs11.MGF.SHA256,
+                 HashMethod.SHA384: pkcs11.MGF.SHA384,
+                 HashMethod.SHA512: pkcs11.MGF.SHA512,
+               }
+        if method in maps:
+            return maps[method]
+        raise HSMError("Unsupported method")
+
+class MethodSize:
+    def map(self, method: HashMethod):
+        maps = { HashMethod.SHA1: hashlib.sha1().digest_size,
+                 HashMethod.SHA256: hashlib.sha256().digest_size,
+                 HashMethod.SHA384: hashlib.sha384().digest_size,
+                 HashMethod.SHA512: hashlib.sha512().digest_size,
+               }
+        if method in maps:
+            return maps[method]
+        raise HSMError("Unsupported method")
 
 class HSMModule:
     modules = {}
@@ -31,8 +66,8 @@ class HSMModule:
             for slot in slots:
                 label = slot['slot']
                 pin = slot['pinfile']
-                token = self.libs[name].get_token(token_label=label)
-                self.modules[name][label] = token.open(rw=True, user_pin=open(pin, 'r', encoding='utf-8').read().rstrip())
+                token = self.libs[name].get_token(token_label=label)  # pylint: disable=consider-using-with
+                self.modules[name][label] = token.open(rw=True, user_pin=open(pin, 'r', encoding='utf-8').read().rstrip())   # pylint: disable=consider-using-with
 
     def hsmlist(self):
         return list(self.modules)
@@ -60,7 +95,7 @@ class HSMModule:
         for attr in pkcs11.Attribute:
             try:
                 if str(attr).split(".")[1] in ['EC_PARAMS']:
-                    retobj[str(attr).split(".")[1]] = ECDomainParameters.load(obj[attr]).native
+                    retobj[str(attr).split(".")[1]] = base64.b64encode(ECDomainParameters.load(obj[attr]).native)
                 elif str(attr).split(".")[1] in ['MODULUS', 'PUBLIC_EXPONENT', 'EC_POINT']:
                     retobj[str(attr).split(".")[1]] = codecs.encode(obj[attr],'hex')
                 else:
@@ -91,6 +126,12 @@ class HSMModule:
         public, private = parameters.generate_keypair(store=True, label=ecgen.label)
         return [self.objtoobj(obj) for obj in [public, private]]
 
+    def gen_edwards(self, name, label, ecgen: ECGenParam):
+        parameters = self.modules[name][label].create_domain_parameters(pkcs11.KeyType.EC_EDWARDS,
+                                                                        { Attribute.EC_PARAMS: encode_named_curve_parameters(ecgen.curve) }, local=True)
+        public, private = parameters.generate_keypair(store=True, label=ecgen.label)
+        return [self.objtoobj(obj) for obj in [public, private]]
+
     def destroyobj(self, name, label, so: SearchObject):
         attrs = self.so_to_attr(so)
         for obj in self.modules[name][label].get_objects(attrs):
@@ -98,28 +139,25 @@ class HSMModule:
             return {'removed': 1}
         return {'removed': 0}
 
-    def wrap(self, name, label, so: DataSearchObject):
+    def wrap(self, name, label, so: SearchObject):
         return self.deencrypt("wrap", name, label, so)
 
-    def unwrap(self, name, label, so: DataSearchObject):
+    def unwrap(self, name, label, so: SearchObject):
         return self.deencrypt("unwrap", name, label, so)
 
-    def sign(self, name, label, so: DataSearchObject):
+    def sign(self, name, label, so: SearchObject):
         return self.deencrypt("sign", name, label, so)
 
-    def verify(self, name, label, so: DataSearchObject):
+    def verify(self, name, label, so: SearchObject):
         return self.deencrypt("verify", name, label, so)
 
-    def encrypt(self, name, label, so: DataSearchObject):
+    def encrypt(self, name, label, so: SearchObject):
         return self.deencrypt("encrypt", name, label, so)
 
-    def decrypt(self, name, label, so: DataSearchObject):
+    def decrypt(self, name, label, so: SearchObject):
         return self.deencrypt("decrypt", name, label, so)
 
-    def deencrypt(self, thefunc: str, name: str, label: str, so: DataSearchObject) -> str:
-        print(self.modules)
-        for mod in self.modules['softhsm']:
-            print(self.modules['softhsm'][mod])
+    def deencrypt(self, thefunc: str, name: str, label: str, so: SearchObject):
         attrs = self.so_to_attr(so)
         data = base64.b64decode(so.data)
         objs = list(self.modules[name][label].get_objects(attrs))
@@ -128,24 +166,37 @@ class HSMModule:
             toexec = getattr(obj, thefunc)
             if obj.key_type==pkcs11.KeyType.RSA:
                 if so.mechanism in ['RSA_PKCS_OAEP', 'RSA_PKCS_PSS'] and so.mechanismparam:
+                    if MethodSize().map(so.hashmethod) is not len(data):
+                        raise HSMError("Data length does not match hash method")
+                    if thefunc == 'verify':
+                        return toexec(data, base64.b64decode(so.signature), mechanism=getattr(pkcs11.Mechanism, so.mechanism),
+                                      mechanism_param=(MethodMechanism().map(so.hashmethod), MethodMGF().map(so.hashmethod), MethodSize().map(so.hashmethod))
+                                     )
                     return base64.b64encode(toexec(data, mechanism=getattr(pkcs11.Mechanism, so.mechanism),
-                                       mechanism_param=(getattr(pkcs11.Mechanism, so.mechanismparam[0]),
-                                                        getattr(pkcs11.MGF, so.mechanismparam[1]),
-                                                        so.mechanismparam[2]
-                                                       )
-                               ))
+                                                   mechanism_param=(MethodMechanism().map(so.hashmethod), MethodMGF().map(so.hashmethod), MethodSize().map(so.hashmethod))
+                                                  )
+                                           )
                 if so.mechanism:
+                    if thefunc == 'verify':
+                        return toexec(data, base64.b64decode(so.signature), mechanism=getattr(pkcs11.Mechanism, so.mechanism))
                     return base64.b64encode(toexec(data, mechanism=getattr(pkcs11.Mechanism, so.mechanism)))
             elif obj.key_type==pkcs11.KeyType.AES:
                 theiv = base64.b64decode(so.iv) if so.iv else self.modules[name][label].generate_random(128)
                 if so.mechanism:
+                    if thefunc == 'verify':
+                        return toexec(data, base64.b64decode(so.signature), mechanism_param = theiv, mechanism=getattr(pkcs11.Mechanism, so.mechanism))
                     retdata = base64.b64encode(toexec(data, mechanism_param = theiv, mechanism=getattr(pkcs11.Mechanism, so.mechanism)))
-                else:
-                    retdata = base64.b64encode(toexec(data, mechanism_param = theiv))
+                elif thefunc == 'verify':
+                    return toexec(data, base64.b64decode(so.signature), mechanism_param = theiv)
+                retdata = base64.b64encode(toexec(data, mechanism_param = theiv))
                 if thefunc == 'encrypt':
                     return {'iv': base64.b64encode(theiv), 'data': retdata}
                 if thefunc == 'decrypt':
-                    return {'iv': base64.b64encode(theiv), 'data': retdata}
+                    return {'data': retdata}
+                if thefunc == 'verify':
+                    return {'data': retdata}
+            if thefunc == 'verify':
+                return toexec(data, so.signature)
             retdata = toexec(data)
             return base64.b64encode(retdata)
         raise HSMError("No such key")
@@ -164,12 +215,12 @@ class HSMModule:
         usage_attr = [Attribute.ENCRYPT, Attribute.WRAP, Attribute.VERIFY, Attribute.DERIVE, Attribute.DECRYPT, Attribute.UNWRAP, Attribute.SIGN]
         flags_attr = [Attribute.NEVER_EXTRACTABLE, Attribute.ALWAYS_SENSITIVE, Attribute.MODIFIABLE, Attribute.COPYABLE, Attribute.EXTRACTABLE, Attribute.PRIVATE]
         wanted_attr = [Attribute.LABEL, Attribute.KEY_TYPE, Attribute.SUBJECT, Attribute.ID, Attribute.MODULUS_BITS]
-        objs = {}
+        objs : dict = {}
         for obj in self.modules[name][label].get_objects():
             objtype = str(obj.object_class).split(".")[1] if obj.object_class is not None else "DATA"
             if objtype not in objs:
                 objs[objtype] = []
-            retobj = {'flags': [], 'usage': []}
+            retobj : dict = {'flags': [], 'usage': []}
             for want in wanted_attr:
                 try:
                     if obj[want] and isinstance(obj[want], bytes):
@@ -193,5 +244,4 @@ class HSMModule:
                 except:
                     pass
             objs[objtype].append(retobj)
-        print(objs)
         return objs

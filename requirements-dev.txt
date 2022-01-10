@@ -12,6 +12,10 @@ lazy-object-proxy==1.7.1
     # via astroid
 mccabe==0.6.1
     # via pylint
+mypy==0.931
+    # via -r requirements-dev.in
+mypy-extensions==0.4.3
+    # via mypy
 platformdirs==2.4.1
     # via pylint
 pylint==2.12.2
@@ -20,10 +24,15 @@ toml==0.10.2
     # via
     #   -c requirements.txt
     #   pylint
+tomli==2.0.0
+    # via
+    #   -c requirements.txt
+    #   mypy
 typing-extensions==4.0.1
     # via
     #   -c requirements.txt
     #   astroid
+    #   mypy
     #   pylint
 wrapt==1.13.3
     # via astroid

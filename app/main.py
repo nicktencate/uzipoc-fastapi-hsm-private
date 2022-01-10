@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 import yaml
 from fastapi import FastAPI, HTTPException
+from typing import Union
 
 from .modules.hsm import HSMModule
-from .modules.model import Modules, Slots, SearchObject, DataSearchObject, RSAGenParam, AESGenParam, ECGenParam
+from .modules.model import Modules, Slots, SearchObject, RSAGenParam, AESGenParam, ECGenParam, DecryptEncryptObject, VerifyRSAObject, VerifyAESObject, SignRSAObject, SignAESObject
 
 with open('conf.yml', 'r', encoding='utf-8') as yamlfile:
     config = yaml.load(yamlfile ,Loader=yaml.Loader)
@@ -62,38 +63,43 @@ async def genec(module: Modules, slot: Slots, ecgen: ECGenParam):
     doesexist(module, slot)
     return {'module': module, "slot": slot, "result": hsm.gen_ec(module, slot, ecgen)}
 
+@app.post("/hsm/{module}/{slot}/generate/ec")
+async def genedwards(module: Modules, slot: Slots, ecgen: ECGenParam):
+    doesexist(module, slot)
+    return {'module': module, "slot": slot, "result": hsm.gen_edwards(module, slot, ecgen)}
+
 @app.post("/hsm/{module}/{slot}/destroy")
 async def destroyobj(module: Modules, slot: Slots, so: SearchObject):
     doesexist(module, slot)
     return {'module': module, "slot": slot, "result": hsm.destroyobj(module, slot, so)}
 
 @app.post("/hsm/{module}/{slot}/encrypt")
-async def encrypt(module: Modules, slot: Slots, so: DataSearchObject):
+async def encrypt(module: Modules, slot: Slots, so: DecryptEncryptObject):
     doesexist(module, slot)
     return {'module': module, "slot": slot, "result": hsm.encrypt(module, slot, so)}
 
 @app.post("/hsm/{module}/{slot}/decrypt")
-async def decrypt(module: Modules, slot: Slots, so: DataSearchObject):
+async def decrypt(module: Modules, slot: Slots, so: DecryptEncryptObject):
     doesexist(module, slot)
     return {'module': module, "slot": slot, "result": hsm.decrypt(module, slot, so)}
 
 @app.post("/hsm/{module}/{slot}/sign")
-async def sign(module: Modules, slot: Slots, so: DataSearchObject):
+async def sign(module: Modules, slot: Slots, so: Union[VerifyRSAObject, VerifyAESObject]):
     doesexist(module, slot)
     return {'module': module, "slot": slot, "result": hsm.sign(module, slot, so)}
 
 @app.post("/hsm/{module}/{slot}/verify")
-async def verify(module: Modules, slot: Slots, so: DataSearchObject):
+async def verify(module: Modules, slot: Slots, so: SearchObject):
     doesexist(module, slot)
     return {'module': module, "slot": slot, "result": hsm.verify(module, slot, so)}
 
 @app.post("/hsm/{module}/{slot}/wrap")
-async def wrap(module: Modules, slot: Slots, so: DataSearchObject):
+async def wrap(module: Modules, slot: Slots, so: SearchObject):
     doesexist(module, slot)
     return {'module': module, "slot": slot, "result": hsm.wrap(module, slot, so)}
 
 @app.post("/hsm/{module}/{slot}/unwrap")
-async def unwrap(module: Modules, slot: Slots, so: DataSearchObject):
+async def unwrap(module: Modules, slot: Slots, so: SearchObject):
     doesexist(module, slot)
     return {'module': module, "slot": slot, "result": hsm.unwrap(module, slot, so)}
 
