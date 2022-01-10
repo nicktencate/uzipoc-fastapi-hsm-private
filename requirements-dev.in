@@ -2,3 +2,6 @@
 
 pylint
 mypy
+types-ujson
+types-orjson
+types-PyYAML

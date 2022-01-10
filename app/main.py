@@ -3,8 +3,8 @@ import yaml
 from fastapi import FastAPI, HTTPException
 from typing import Union
 
-from .modules.hsm import HSMModule
-from .modules.model import Modules, Slots, SearchObject, RSAGenParam, AESGenParam, ECGenParam, DecryptEncryptObject, VerifyRSAObject, VerifyAESObject, SignRSAObject, SignAESObject
+from app.hsm import HSMModule
+from app.model import Modules, Slots, SearchObject, RSAGenParam, AESGenParam, ECGenParam, DecryptEncryptObject, VerifyRSAObject, VerifyAESObject, SignRSAObject, SignAESObject
 
 with open('conf.yml', 'r', encoding='utf-8') as yamlfile:
     config = yaml.load(yamlfile ,Loader=yaml.Loader)
