@@ -94,8 +94,9 @@ class HSMModule:
         retobj = {}
         for attr in pkcs11.Attribute:
             try:
+                print(attr, obj[attr])
                 if str(attr).split(".")[1] in ['EC_PARAMS']:
-                    retobj[str(attr).split(".")[1]] = base64.b64encode(ECDomainParameters.load(obj[attr]).native)
+                    retobj[str(attr).split(".")[1]] = ECDomainParameters.load(obj[attr]).native
                 elif str(attr).split(".")[1] in ['MODULUS', 'PUBLIC_EXPONENT', 'EC_POINT']:
                     retobj[str(attr).split(".")[1]] = codecs.encode(obj[attr],'hex')
                 else:
@@ -108,7 +109,15 @@ class HSMModule:
             except:
                 pass
         if obj.key_type==pkcs11.KeyType.RSA:
-            retobj['publickey'] = asn1crypto.pem.armor('PUBLIC KEY', pkcs11.util.rsa.encode_rsa_public_key(obj))
+            try:
+                retobj['publickey'] = asn1crypto.pem.armor('PUBLIC KEY', pkcs11.util.rsa.encode_rsa_public_key(obj))
+            except:
+                pass
+        if obj.key_type==pkcs11.KeyType.EC and obj.object_class == pkcs11.ObjectClass.PUBLIC_KEY:
+            try:
+                retobj['publickey'] = asn1crypto.pem.armor('PUBLIC KEY', (pkcs11.util.ec.encode_ec_public_key(obj)))
+            except:
+                pass
         return retobj
 
     def gen_rsa(self, name, label, rsagen: RSAGenParam):
