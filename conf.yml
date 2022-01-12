@@ -17,10 +17,10 @@ modules:
 #      pinfile: secrets/yubikey-002.pin
 #    - slot: HSM-003
 #      pinfile: secrets/yubikey-003.pin
-  - name: utimaco
+  - name: softhsm
     module: /usr/lib/softhsm/libsofthsm2.so
     slots: 
-    - slot: SomeLabel
+    - slot: SoftHSMLabel
       pinfile: secrets/utimaco-000.pin
 #  - name: softhsm
 #    module: /usr/lib64/pkcs11/libsofthsm2.so
