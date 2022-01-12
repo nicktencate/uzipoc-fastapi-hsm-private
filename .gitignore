@@ -7,3 +7,6 @@ __pycache__
 *.key
 *.swp
 secrets/
+.bootstrap
+tokens
+softhsm2.conf
