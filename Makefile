@@ -24,3 +24,9 @@ check-types: venv ## Check for type issues with mypy
 
 run:
 	. .venv/bin/activate && ${env} python3 -m hypercorn app.main:app --reload -b 0
+
+.bootstrap:
+	bash ./bootstrap.sh
+	@touch .bootstrap
+
+setup: venv .bootstrap
