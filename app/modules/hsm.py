@@ -2,6 +2,7 @@
 import codecs
 import base64
 import hashlib
+from struct import pack
 
 import pkcs11
 import pkcs11.util
@@ -10,6 +11,8 @@ import pkcs11.types
 from pkcs11 import Attribute
 from pkcs11.util.ec import encode_named_curve_parameters
 
+import asn1crypto.cms
+import asn1crypto.core
 import asn1crypto.pem
 from asn1crypto.keys import ECDomainParameters
 
@@ -22,6 +25,31 @@ from .model import (
     ECGenParam,
     HashMethod,
 )
+
+class SharedInfo(asn1crypto.core.Sequence):
+    _fields = [
+        ('algorithm', asn1crypto.cms.KeyEncryptionAlgorithm),
+        ('entityUInfo', asn1crypto.core.OctetString, {'explicit': 1, 'optional': True}),
+        ('suppPubInfo', asn1crypto.core.OctetString, {'explicit': 2})
+    ]
+
+class KeyXchangeKDF:  # pylint: disable=too-few-public-methods
+    @staticmethod
+    def map(method: HashMethod):
+        maps = { 'dhSinglePass-stdDH-sha1kdf-scheme': pkcs11.KDF.SHA1,
+                 'dhSinglePass-stdDH-sha224kdf-scheme': pkcs11.KDF.SHA224,
+                 'dhSinglePass-stdDH-sha256kdf-scheme': pkcs11.KDF.SHA256,
+                 'dhSinglePass-stdDH-sha384kdf-scheme': pkcs11.KDF.SHA384,
+                 'dhSinglePass-stdDH-sha512kdf-scheme': pkcs11.KDF.SHA512,
+                 'sha1': pkcs11.KDF.SHA1,
+                 'sha224': pkcs11.KDF.SHA224,
+                 'sha256': pkcs11.KDF.SHA256,
+                 'sha384': pkcs11.KDF.SHA384,
+                 'sha512': pkcs11.KDF.SHA512
+               }
+        if method in maps:
+            return maps[method]
+        raise HSMError("Unsupported scheme")
 
 
 class MethodMechanism:  # pylint: disable=too-few-public-methods
@@ -213,6 +241,134 @@ class HSMModule:
     def decrypt(self, name, label, so: SearchObject):
         return self._deencrypt("decrypt", name, label, so)
 
+    def derive(self, name, label, so: SearchObject):
+        return self._deencrypt("derive_key", name, label, so)
+# unwrap = optional ( aes128_wrap, aes192_wrap, aes256_wrap, aes128, aes192, aes256)
+# wrap = optional ( aes128_wrap, aes192_wrap, aes256_wrap, aes128, aes192, aes256)
+# sharedinfo = optional
+# algorithm = optional  (dhSinglePass-stdDH-sha1kdf-scheme , 224, 256,384,512, of gewoon SHA1, SHA256, SHA512, SHA384, SHA224)
+# otherpub = base64encoded
+# data = base64encoded data
+# size = number of returned bytes
+
+# voor unwrap:
+#   unwrap = aes128_wrap
+#   algorithm = dhSinglePass-stdDH-sha1kdf-scheme  # RFC5753 compatible met CMS
+#   otherpub = blablabla==
+#   data = wrapped data
+# returns
+#   aeskey
+
+# voor wrap:
+#   wrap = aes128_wrap
+#   algorithm = dhSinglePass-stdDH-sha1kdf-scheme
+#   otherpub = blablabla==
+#   data = (aes-key/data)-die-encrypted moet worden
+# returns
+#   wrapped_data
+
+
+# voor normale ECDH key agreement:
+#   otherpub = blablabla==
+#   sharedinfo: indien gewenst
+#   data: ""
+#   size: aantal returned bits
+#   algorithm: optioneel: SHA256 ofzoiets
+    def _derive_key(self, so: SearchObject, toexec, data: bytes):
+        # this seems counter intiutive, however if you want to return an AES key it should be extractable after
+        # calculation
+        publictemplate = {pkcs11.Attribute.SENSITIVE: False, pkcs11.Attribute.EXTRACTABLE: True}
+        otherpub = base64.b64decode(so.otherpub)
+        sharedinfo = so.sharedinfo if hasattr(so, 'sharedinfo') else None
+        thekdf = KeyXchangeKDF(so.algorithm) if hasattr(so, 'algorithm') else pkcs11.KDF.NULL
+        if hasattr(so, 'wrap') or hasattr(so, 'unwrap'):
+            wrap = so.wrap if hasattr(so, 'wrap') else so.unwrap
+            if hasattr(so, 'algorithm') and so.algorithm.startswith("dhSinglePass-stdDH-sha"):
+                sharedinfo = SharedInfo({'algorithm': {'algorithm': wrap}, 'suppPubInfo': pack(">L", aessize)}).dump()
+            aessize = int(so.wrap[3:6])
+            newaes = toexec(pkcs11.KeyType.AES, aessize,
+                            mechanism_param=(thekdf,
+                                             sharedinfo,
+                                             otherpub)
+                           )
+            if hasattr(so, 'wrap'):
+                toexec_wrap = getattr(newaes, 'wrap_key')
+            else:
+                toexec_wrap = getattr(newaes, 'unwrap_key')
+            return base64.b64encode(
+                toexec_wrap(
+                    pkcs11.ObjectClass.SECRET_KEY,
+                    pkcs11.KeyType.AES,
+                    data,
+                    template=publictemplate
+                )['pkcs11.Attribute.VALUE']
+            )
+        if hasattr(so, 'size'):
+            return base64.b64encode(
+                toexec(pkcs11.KeyType.AES, so.size, mechanism_param=(thekdf, sharedinfo, otherpub), template=publictemplate)['pkcs11.Attribute.VALUE']
+            )
+        return False
+    def _rsa(self, so: SearchObject, toexec, data: bytes, thefunc: str):
+        mechanism_param = None
+        if so.mechanism in ["RSA_PKCS_OAEP", "RSA_PKCS_PSS"] and so.hashmethod:
+            if MethodSize.map(so.hashmethod) is not len(data):
+                raise HSMError("Data length does not match hash method")
+            mechanism_param = (
+                MethodMechanism.map(so.hashmethod),
+                MethodMGF.map(so.hashmethod),
+                MethodSize.map(so.hashmethod),
+            )
+        if so.mechanism:
+            if thefunc == "verify":
+                return toexec(
+                    data,
+                    base64.b64decode(so.signature),
+                    mechanism=getattr(pkcs11.Mechanism, so.mechanism),
+                    mechanism_param=mechanism_param,
+                )
+            return base64.b64encode(
+                toexec(
+                    data,
+                    mechanism=getattr(pkcs11.Mechanism, so.mechanism),
+                    mechanism_param=mechanism_param,
+                )
+            )
+        return False
+
+    def _aes(self, so: SearchObject, toexec, data: bytes, thefunc: str, module):
+        theiv = (
+            base64.b64decode(so.iv)
+            if so.iv
+            else module.generate_random(128)
+        )
+        if so.mechanism:
+            if thefunc == "verify":
+                return toexec(
+                    data,
+                    base64.b64decode(so.signature),
+                    mechanism_param=theiv,
+                    mechanism=getattr(pkcs11.Mechanism, so.mechanism),
+                )
+            retdata = base64.b64encode(
+                toexec(
+                    data,
+                    mechanism_param=theiv,
+                    mechanism=getattr(pkcs11.Mechanism, so.mechanism),
+                )
+            )
+        elif thefunc == "verify":
+            return toexec(
+                data, base64.b64decode(so.signature), mechanism_param=theiv
+            )
+        retdata = base64.b64encode(toexec(data, mechanism_param=theiv))
+        if thefunc == "encrypt":
+            return {"iv": base64.b64encode(theiv), "data": retdata}
+        if thefunc == "decrypt":
+            return {"data": retdata}
+        if thefunc == "verify":
+            return {"data": retdata}
+        return False
+
     def _deencrypt(self, thefunc: str, name: str, label: str, so: SearchObject):
         """
         Given search parameters, find the first object within a 'module:slot' that complies with
@@ -235,69 +391,18 @@ class HSMModule:
         data = base64.b64decode(so.data)
         objs = list(self.modules[name][label].get_objects(attrs))
         if objs:
+
             obj = objs[0]
             toexec = getattr(obj, thefunc)
             if toexec is None:
                 # HSM API Module is used incorrectly:
                 raise ValueError(f"Function {thefunc} is unknown.")
-
+            if thefunc == "derive_key":
+                return self._derive_key(so, toexec, data)
             if obj.key_type == pkcs11.KeyType.RSA:
-                mechanism_param = None
-                if so.mechanism in ["RSA_PKCS_OAEP", "RSA_PKCS_PSS"] and so.hashmethod:
-                    if MethodSize.map(so.hashmethod) is not len(data):
-                        raise HSMError("Data length does not match hash method")
-                    mechanism_param = (
-                        MethodMechanism.map(so.hashmethod),
-                        MethodMGF.map(so.hashmethod),
-                        MethodSize.map(so.hashmethod),
-                    )
-                if so.mechanism:
-                    if thefunc == "verify":
-                        return toexec(
-                            data,
-                            base64.b64decode(so.signature),
-                            mechanism=getattr(pkcs11.Mechanism, so.mechanism),
-                            mechanism_param=mechanism_param,
-                        )
-                    return base64.b64encode(
-                        toexec(
-                            data,
-                            mechanism=getattr(pkcs11.Mechanism, so.mechanism),
-                            mechanism_param=mechanism_param,
-                        )
-                    )
-            elif obj.key_type == pkcs11.KeyType.AES:
-                theiv = (
-                    base64.b64decode(so.iv)
-                    if so.iv
-                    else self.modules[name][label].generate_random(128)
-                )
-                if so.mechanism:
-                    if thefunc == "verify":
-                        return toexec(
-                            data,
-                            base64.b64decode(so.signature),
-                            mechanism_param=theiv,
-                            mechanism=getattr(pkcs11.Mechanism, so.mechanism),
-                        )
-                    retdata = base64.b64encode(
-                        toexec(
-                            data,
-                            mechanism_param=theiv,
-                            mechanism=getattr(pkcs11.Mechanism, so.mechanism),
-                        )
-                    )
-                elif thefunc == "verify":
-                    return toexec(
-                        data, base64.b64decode(so.signature), mechanism_param=theiv
-                    )
-                retdata = base64.b64encode(toexec(data, mechanism_param=theiv))
-                if thefunc == "encrypt":
-                    return {"iv": base64.b64encode(theiv), "data": retdata}
-                if thefunc == "decrypt":
-                    return {"data": retdata}
-                if thefunc == "verify":
-                    return {"data": retdata}
+                return self._rsa(so, toexec, data, thefunc)
+            if obj.key_type == pkcs11.KeyType.AES:
+                return self._aes(so, toexec, data, thefunc, self.modules[name][label])
             if thefunc == "verify":
                 return toexec(data, so.signature)
             retdata = toexec(data)
