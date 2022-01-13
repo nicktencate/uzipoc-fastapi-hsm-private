@@ -54,7 +54,6 @@ rsa_enckey = rsa_enc['encrypted_key']
 aeskey = rsapriv.decrypt(rsa_enckey, mechanism=pkcs11.Mechanism.RSA_PKCS)
 
 ec_otherpub = ec_enc['originator']['public_key']
-ridkey = ec_enc['recipient_encrypted_keys'][0]['encrypted_key']
 ec_crypted_key = ec_enc['recipient_encrypted_keys'][0]['encrypted_key']
 aesalgo = asn1crypto.cms.KeyEncryptionAlgorithmId().map(ec_enc['key_encryption_algorithm']['parameters']['0'])
 
