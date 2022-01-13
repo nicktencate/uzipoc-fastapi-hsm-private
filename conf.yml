@@ -21,7 +21,7 @@ modules:
     module: /usr/lib/softhsm/libsofthsm2.so
     slots: 
     - slot: SoftHSMLabel
-      pinfile: secrets/utimaco-000.pin
+      pinfile: secrets/someslot-000.pin
 #  - name: softhsm
 #    module: /usr/lib64/pkcs11/libsofthsm2.so
 #    slots: 

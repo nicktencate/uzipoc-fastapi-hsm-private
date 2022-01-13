@@ -7,3 +7,6 @@ hypercorn
 fastapi
 python-pkcs11
 pyyaml
+
+## Fixed for compatibility for development requirements
+tomli==1.1.0

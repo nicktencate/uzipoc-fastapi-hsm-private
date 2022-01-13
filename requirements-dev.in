@@ -2,6 +2,7 @@
 
 pylint
 mypy
+black
 types-ujson
 types-orjson
 types-PyYAML

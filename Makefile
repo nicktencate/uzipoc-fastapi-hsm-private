@@ -17,10 +17,14 @@ pip-sync-dev: ## synchronizes the .venv with the state of requirements.txt
 	. .venv/bin/activate && ${env} python3 -m piptools sync requirements.txt requirements-dev.txt
 
 lint: venv  ## Do basic linting
-	@. .venv/bin/activate && ${env} pylint app 
+	@. .venv/bin/activate && ${env} python3 -m pylint app 
+	@. .venv/bin/activate && ${env} python3 -m black --check app 
 
 check-types: venv ## Check for type issues with mypy
 	@. .venv/bin/activate && ${env} python3 -m mypy --check app
+
+fix:
+	@. .venv/bin/activate && ${env} python3 -m black app 
 
 run:
 	. .venv/bin/activate && ${env} python3 -m hypercorn app.main:app --reload -b 0
