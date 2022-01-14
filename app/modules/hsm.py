@@ -7,6 +7,7 @@ from struct import pack
 import pkcs11
 import pkcs11.util
 import pkcs11.util.rsa
+import pkcs11.util.dsa
 import pkcs11.types
 from pkcs11 import Attribute
 from pkcs11.util.ec import encode_named_curve_parameters
@@ -154,6 +155,9 @@ class HSMModule:
                     "MODULUS",
                     "PUBLIC_EXPONENT",
                     "EC_POINT",
+                    "PRIME",
+                    "SUBPRIME",
+                    "BASE"
                 ]:
                     retobj[str(attr).split(".")[1]] = codecs.encode(obj[attr], "hex")
                 else:
@@ -169,6 +173,13 @@ class HSMModule:
             try:
                 retobj["publickey"] = asn1crypto.pem.armor(
                     "PUBLIC KEY", pkcs11.util.rsa.encode_rsa_public_key(obj)
+                )
+            except:
+                pass
+        if obj.key_type == pkcs11.KeyType.DSA:
+            try:
+                retobj["publickey"] = asn1crypto.pem.armor(
+                    "PUBLIC KEY", pkcs11.util.dsa.encode_dsa_public_key(obj)
                 )
             except:
                 pass
@@ -331,6 +342,7 @@ class HSMModule:
                 )
             )
         return False
+
     def _rsa(self, so: SearchObject, toexec, data: bytes, thefunc: str):
         mechanism_param = None
         if so.mechanism in ["RSA_PKCS_OAEP", "RSA_PKCS_PSS"] and so.hashmethod:
