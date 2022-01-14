@@ -49,7 +49,4 @@ def test(session, baseurl):
     decrypted = session.post(baseurl+"/decrypt", json = params).json()['result']
     assert b64decode(decrypted) == message
 
-
     return True
-  
-   

@@ -21,6 +21,10 @@ if len(sys.argv) < 2:
     from tests import genrsa
     rsatest = genrsa.test(s, baseurl)
     assert len(rsatest['result']) == 2, "RSA generation error"
+
+    from tests import gendsa
+    dsatest = gendsa.test(s, baseurl)
+    assert len(dsatest['result']) == 2, "DSA generation error"
     
     from tests import genec
     ectest = genec.test(s, baseurl)

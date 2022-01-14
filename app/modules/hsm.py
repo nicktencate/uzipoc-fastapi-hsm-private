@@ -188,14 +188,18 @@ class HSMModule:
         public, private = self.modules[name][label].generate_keypair(
             pkcs11.KeyType.RSA, rsagen.bits, label=rsagen.label, store=True
         )
-        # not supported ?, public_template={pkcs11.Attribute.PUBLIC_EXPONENT: rsagen.public_exponent})
+        return [self._objtoobj(obj) for obj in [public, private]]
+
+    def gen_dsa(self, name, label, dsagen: RSAGenParam):
+        public, private = self.modules[name][label].generate_keypair(
+            pkcs11.KeyType.DSA, dsagen.bits, label=dsagen.label, store=True
+        )
         return [self._objtoobj(obj) for obj in [public, private]]
 
     def gen_aes(self, name, label, aesgen: AESGenParam):
         private = self.modules[name][label].generate_key(
             pkcs11.KeyType.AES, aesgen.bits, label=aesgen.label, store=True
         )
-        # not supported ?, public_template={pkcs11.Attribute.PUBLIC_EXPONENT: rsagen.public_exponent})
         return [self._objtoobj(obj) for obj in [private]]
 
     def gen_ec(self, name, label, ecgen: ECGenParam):
@@ -309,6 +313,24 @@ class HSMModule:
             )
         return False
 
+    def _dsa(self, so: SearchObject, toexec, data: bytes, thefunc: str):
+        mechanism_param = None
+        if so.mechanism:
+            if thefunc == "verify":
+                return toexec(
+                    data,
+                    base64.b64decode(so.signature),
+                    mechanism=getattr(pkcs11.Mechanism, so.mechanism),
+                    mechanism_param=mechanism_param,
+                )
+            return base64.b64encode(
+                toexec(
+                    data,
+                    mechanism=getattr(pkcs11.Mechanism, so.mechanism),
+                    mechanism_param=mechanism_param,
+                )
+            )
+        return False
     def _rsa(self, so: SearchObject, toexec, data: bytes, thefunc: str):
         mechanism_param = None
         if so.mechanism in ["RSA_PKCS_OAEP", "RSA_PKCS_PSS"] and so.hashmethod:
@@ -402,6 +424,8 @@ class HSMModule:
                 return self._derive_key(so, toexec, data)
             if obj.key_type == pkcs11.KeyType.RSA:
                 return self._rsa(so, toexec, data, thefunc)
+            if obj.key_type == pkcs11.KeyType.DSA:
+                return self._dsa(so, toexec, data, thefunc)
             if obj.key_type == pkcs11.KeyType.AES:
                 return self._aes(so, toexec, data, thefunc, self.modules[name][label])
             if thefunc == "verify":

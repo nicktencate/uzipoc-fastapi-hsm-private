@@ -18,6 +18,7 @@ from .modules.model import (
     HSMError,
     SearchObject,
     RSAGenParam,
+    DSAGenParam,
     AESGenParam,
     ECGenParam,
     DecryptEncryptObject,
@@ -155,6 +156,12 @@ async def getobjdetails(module: Modules, slot: Slots, so: SearchObject):
 async def genrsa(module: Modules, slot: Slots, rsagen: RSAGenParam):
     doesexist(module, slot)
     return {"module": module, "slot": slot, "result": hsm.gen_rsa(module, slot, rsagen)}
+
+
+@app.post("/hsm/{module}/{slot}/generate/dsa", tags=["Key generation"])
+async def gendsa(module: Modules, slot: Slots, dsagen: DSAGenParam):
+    doesexist(module, slot)
+    return {"module": module, "slot": slot, "result": hsm.gen_dsa(module, slot, dsagen)}
 
 
 @app.post("/hsm/{module}/{slot}/generate/aes", tags=["Key generation"])
