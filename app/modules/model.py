@@ -11,6 +11,8 @@ class HSMError(Exception):
     """
     Base Exception for HSM Errors.
     """
+    def __init__(self, message):
+        self.message = message
 
 
 class BaseModules(str, Enum):
@@ -55,6 +57,7 @@ class SearchObjectEnum(str, Enum):
 
 
 class SearchObject(BaseModel):  # pylint: disable=too-few-public-methods
+    # TODO: pydantic validators.
     label: Optional[str] = None
     objtype: Optional[SearchObjectEnum] = None
     objid: Optional[str] = None
@@ -62,6 +65,7 @@ class SearchObject(BaseModel):  # pylint: disable=too-few-public-methods
 
 class DecryptEncryptObject(SearchObject):  # pylint: disable=too-few-public-methods
     data: Optional[str] = None
+    # TODO: Pydantic validator default mechanism: SHA256_RSA_PKCS_PSS
     mechanism: Optional[str] = None
     hashmethod: Optional[HashMethod] = None
 
@@ -108,6 +112,8 @@ class AESGenParam(RSAAESGenParam):  # pylint: disable=too-few-public-methods
 
 
 class ECGenParam(BaseModel):  # pylint: disable=too-few-public-methods
+    # TODO: pydantic validators: secp256r1 == prime256v1 (alias)
+    #
     label: Optional[str] = None
     objid: Optional[str] = None
     curve: Optional[str] = None

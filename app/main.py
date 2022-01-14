@@ -62,6 +62,10 @@ tags_metadata = [
         "description": "Generate new keys: Elliptic Curves, RSA, AES",
     },
     {
+        "name": "Object removal",
+        "description": "Remove an object",
+    },
+    {
         "name": "Key usage",
         "description": "Use available keys to sign and encrypt data.",
         "externalDocs": {
@@ -165,7 +169,7 @@ async def genec(module: Modules, slot: Slots, ecgen: ECGenParam):
     return {"module": module, "slot": slot, "result": hsm.gen_ec(module, slot, ecgen)}
 
 
-@app.post("/hsm/{module}/{slot}/generate/ec", tags=["Key generation"])
+@app.post("/hsm/{module}/{slot}/generate/edwards", tags=["Key generation"])
 async def genedwards(module: Modules, slot: Slots, ecgen: ECGenParam):
     doesexist(module, slot)
     return {
@@ -175,7 +179,7 @@ async def genedwards(module: Modules, slot: Slots, ecgen: ECGenParam):
     }
 
 
-@app.post("/hsm/{module}/{slot}/destroy", tags=["Key usage"])
+@app.post("/hsm/{module}/{slot}/destroy", tags=["Object removal"])
 async def destroyobj(module: Modules, slot: Slots, so: SearchObject):
     doesexist(module, slot)
     return {"module": module, "slot": slot, "result": hsm.destroyobj(module, slot, so)}
