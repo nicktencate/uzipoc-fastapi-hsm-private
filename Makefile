@@ -28,6 +28,15 @@ fix:
 
 run:
 	. .venv/bin/activate && ${env} python3 -m hypercorn app.main:app --reload -b 0
+testrun:
+	bash ./bootstrap.sh
+	. .venv/bin/activate && ${env} python3 -m hypercorn app.main:app --reload -b 0
+
+runtest:
+	. .venv/bin/activate && ${env} python3 -m tests.run
+
+runtest-dev:
+	. .venv/bin/activate && ${env} python3 -m tests.run dev
 
 .bootstrap:
 	bash ./bootstrap.sh

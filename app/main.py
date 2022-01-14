@@ -3,6 +3,7 @@
 This file contains the API setup to communicate with the configured HSM,
 defined using the FastAPI library.
 """
+import sys
 from typing import Union
 from urllib.request import Request
 
@@ -221,6 +222,10 @@ async def wrap(module: Modules, slot: Slots, so: SearchObject):
 async def unwrap(module: Modules, slot: Slots, so: SearchObject):
     doesexist(module, slot)
     return {"module": module, "slot": slot, "result": hsm.unwrap(module, slot, so)}
+
+@app.get("/quit", tags=["Development only"])
+async def quit():
+    sys.exit()
 
 
 # import pkcs11

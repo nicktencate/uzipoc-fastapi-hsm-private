@@ -312,12 +312,12 @@ class HSMModule:
     def _rsa(self, so: SearchObject, toexec, data: bytes, thefunc: str):
         mechanism_param = None
         if so.mechanism in ["RSA_PKCS_OAEP", "RSA_PKCS_PSS"] and so.hashmethod:
-            if MethodSize.map(so.hashmethod) is not len(data):
+            if MethodSize.map(so.hashmethod) is not len(data) and thefunc in ['verify', 'sign']:
                 raise HSMError("Data length does not match hash method")
             mechanism_param = (
                 MethodMechanism.map(so.hashmethod),
                 MethodMGF.map(so.hashmethod),
-                MethodSize.map(so.hashmethod),
+                MethodSize.map(so.hashmethod) if thefunc in ['verify', 'sign'] else None,
             )
         if so.mechanism:
             if thefunc == "verify":

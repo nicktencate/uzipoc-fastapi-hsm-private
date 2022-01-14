@@ -6,3 +6,4 @@ black
 types-ujson
 types-orjson
 types-PyYAML
+requests
