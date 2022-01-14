@@ -368,7 +368,7 @@ class HSMModule:
                     mechanism_param=mechanism_param,
                 )
             )
-        return False
+        return base64.b64encode(toexec(data))
 
     def _aes(self, so: SearchObject, toexec, data: bytes, thefunc: str, module):
         theiv = (
