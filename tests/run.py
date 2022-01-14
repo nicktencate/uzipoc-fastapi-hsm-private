@@ -38,6 +38,12 @@ if len(sys.argv) < 2:
     print("Time: ",time()-start)
 
     start = time()
+    from tests import genedwards
+    edtest = genedwards.test(s, baseurl)
+    assert len(edtest['result']) == 2, "ED generation error"
+    print("Time: ",time()-start)
+
+    start = time()
     from tests import genaes
     aestest = genaes.test(s, baseurl)
     assert len(aestest['result']) == 1, "AES generation error"

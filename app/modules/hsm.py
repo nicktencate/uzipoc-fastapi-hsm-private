@@ -27,6 +27,11 @@ from .model import (
     HashMethod,
 )
 
+asn1crypto.keys.NamedCurve.register('curve25519', '1.3.101.110', 32)
+asn1crypto.keys.NamedCurve.register('curve448', '1.3.101.111', 57)
+asn1crypto.keys.NamedCurve.register('ed25519', '1.3.101.112', 32)
+asn1crypto.keys.NamedCurve.register('ed448', '1.3.101.113', 57)
+
 class SharedInfo(asn1crypto.core.Sequence):
     _fields = [
         ('algorithm', asn1crypto.cms.KeyEncryptionAlgorithm),
