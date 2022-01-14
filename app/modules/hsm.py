@@ -308,6 +308,7 @@ class HSMModule:
                 toexec(pkcs11.KeyType.AES, so.size, mechanism_param=(thekdf, sharedinfo, otherpub), template=publictemplate)['pkcs11.Attribute.VALUE']
             )
         return False
+
     def _rsa(self, so: SearchObject, toexec, data: bytes, thefunc: str):
         mechanism_param = None
         if so.mechanism in ["RSA_PKCS_OAEP", "RSA_PKCS_PSS"] and so.hashmethod:

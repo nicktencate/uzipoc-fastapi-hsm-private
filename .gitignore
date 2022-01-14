@@ -10,3 +10,4 @@ secrets/
 .bootstrap
 tokens
 softhsm2.conf
+conf.yml
