@@ -35,9 +35,16 @@ if [ $? -ne 0 ]; then
 	exit 1
 fi
 
-sofile=$(locate -i softhsm2.so | head -n 1)
+sofile=$(ls -1 /usr/lib*/*/*softhsm2.so /usr/lib*/*softhsm2.so 2>/dev/null | head -n 1)
+
 echo "We found a softhsm module in: '$sofile'"
-echo "You may consider to use this module in the conf.yml file"
+if [ ! -f conf.yml ] ; then
+    cat conf.yml.example | sed -e "s%MODULE_PATH%$sofile%" > conf.yml
+    echo "You're conf.yml file is setup with this path"
+else
+    echo "You may consider to use this module in the conf.yml file"
+fi
+
 echo
 echo
 echo "you might want to add SOFTHSM2_CONF to your bash profile or similar"
