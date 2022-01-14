@@ -73,6 +73,7 @@ class DecryptEncryptObject(SearchObject):  # pylint: disable=too-few-public-meth
     # TODO: Pydantic validator default mechanism: SHA256_RSA_PKCS_PSS
     mechanism: Optional[str] = None
     hashmethod: Optional[HashMethod] = None
+    iv: Optional[str] = None
 
 
 class VerifyObject(SearchObject):  # pylint: disable=too-few-public-methods

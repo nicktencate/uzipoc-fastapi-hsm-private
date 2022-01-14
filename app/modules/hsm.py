@@ -146,7 +146,7 @@ class HSMModule:
         retobj = {}
         for attr in pkcs11.Attribute:
             try:
-                print(attr, obj[attr])
+                # print(attr, obj[attr])
                 if str(attr).split(".")[1] in ["EC_PARAMS"]:
                     retobj[str(attr).split(".")[1]] = ECDomainParameters.load(
                         obj[attr]
@@ -373,7 +373,7 @@ class HSMModule:
     def _aes(self, so: SearchObject, toexec, data: bytes, thefunc: str, module):
         theiv = (
             base64.b64decode(so.iv)
-            if so.iv
+            if hasattr(so, 'iv') and so.iv
             else module.generate_random(128)
         )
         if so.mechanism:

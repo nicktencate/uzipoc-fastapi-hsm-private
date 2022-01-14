@@ -37,5 +37,8 @@ if len(sys.argv) < 2:
 from tests import rsaendecrypt
 assert rsaendecrypt.test(s, baseurl), "RSA encrypt and decrypt error"
 
+from tests import aesendecrypt
+assert aesendecrypt.test(s, baseurl), "AES encrypt and decrypt error"
+
 
 print("All tests did not fail too obviously")
