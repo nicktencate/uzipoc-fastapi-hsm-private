@@ -7,3 +7,4 @@ types-ujson
 types-orjson
 types-PyYAML
 requests
+pycrypto
