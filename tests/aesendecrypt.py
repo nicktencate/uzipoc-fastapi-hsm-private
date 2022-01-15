@@ -7,7 +7,7 @@ def test(session, baseurl):
     print("Testing AES mode: Default")
 
     params = {"label": "AESkey", "objtype": "SECRET_KEY"}
-    aessize = session.post(baseurl, json=params).json()["objects"][0]["VALUE_LEN"] * 8
+    _aessize = session.post(baseurl, json=params).json()["objects"][0]["VALUE_LEN"] * 8
 
     # Basic encrypt and decrypt
     params = {
@@ -16,8 +16,8 @@ def test(session, baseurl):
         "data": b64encode(message).decode(),
     }
     encrypted = session.post(baseurl + "/encrypt", json=params).json()["result"]
-    assert len(b64decode(encrypted["data"])) is aessize / 8, "Data length error"
-    assert len(b64decode(encrypted["iv"])) is aessize / 8, "IV length error"
+    assert len(b64decode(encrypted["data"])) == 16, "Data length error"
+    assert len(b64decode(encrypted["iv"])) == 16, "IV length error"
 
     params = {
         "label": "AESkey",
@@ -26,7 +26,7 @@ def test(session, baseurl):
         "iv": encrypted["iv"],
     }
     decrypted = session.post(baseurl + "/decrypt", json=params).json()["result"]["data"]
-    assert b64decode(decrypted) is message
+    assert b64decode(decrypted) == message
 
     mechanisms = session.get(baseurl).json()["mechanisms"]
     # Advanced encrypt en decrypt

@@ -41,7 +41,7 @@ def testpkcs(
             "mechanism": mech,
         }
         signature = session.post(baseurl + "/sign", json=params).json()["result"]
-        assert len(b64decode(signature)) is bits / 8, "Length error RSA encrypt"
+        assert len(b64decode(signature)) == bits / 8, "Length error RSA sign pkcs"
 
         print("Testing RSA verify (hsm): ", mech)
         params = {
@@ -64,8 +64,48 @@ def testpkcs(
         signedhash = psig[psig.index(b"\x00") + 1 :]
         assert (
             asn1crypto.tsp.MessageImprint().load(signedhash)["hashed_message"].native
-            is hasher(message).digest()
+            == hasher(message).digest()
         )
+
+
+# TODO: this fails
+def testpkcshash(
+    session, baseurl, allmechanisms, bits
+):  # pylint: disable=too-many-locals
+    message = b"Hallo wereld"
+    mechanisms = [
+        mechanism
+        for mechanism in allmechanisms
+        if mechanism.startswith("SHA") and mechanism.endswith("_RSA_PKCS")
+    ]
+    params = {}
+    signature = None
+    for mech in mechanisms:
+        print("Testing RSA sign: ", mech)
+        hashmethod = mech[: mech.index("_")].lower()
+        params = {
+            "label": "RSAkey",
+            "objtype": "PRIVATE_KEY",
+            "data": b64encode(
+                HasherToCryptoHash[hashmethod].new(message).digest()
+            ).decode(),
+            "mechanism": mech[mech.index("_") + 1 :],
+            "hashmethod": hashmethod,
+        }
+        print(params)
+        signature = session.post(baseurl + "/sign", json=params).json()["result"]
+        assert len(b64decode(signature)) == bits / 8, "Length error RSA sign pkcs"
+
+        print("Testing RSA verify: ", mech)
+        params = {
+            "label": "RSAkey",
+            "objtype": "PUBLIC_KEY",
+            "data": b64encode(message).decode(),
+            "mechanism": mech,
+            "signature": signature,
+        }
+        decrypted = session.post(baseurl + "/verify", json=params).json()["result"]
+        assert decrypted is True
 
 
 def testpss(
@@ -88,7 +128,7 @@ def testpss(
             "hashmethod": hashmethod,
         }
         signature = session.post(baseurl + "/sign", json=params).json()["result"]
-        assert len(b64decode(signature)) is bits / 8, "Length error RSA encrypt"
+        assert len(b64decode(signature)) == bits / 8, "Length error RSA signpss"
 
         print("Testing RSA verify: ", mech)
         params = {
@@ -112,7 +152,7 @@ def testpss(
             PKCS1_PSS.EMSA_PSS_VERIFY(
                 CryptoHash.new(message),
                 psig,
-                4096 - 1,
+                bits - 1,
                 lambda x, y: PKCS1_PSS.MGF1(
                     x, y, CryptoHash.new()  # pylint: disable=cell-var-from-loop
                 ),
@@ -120,6 +160,86 @@ def testpss(
             )
             is True
         ), "Non-HSM verify error"
+
+
+def testpsshash(
+    session, baseurl, allmechanisms, bits
+):  # pylint: disable=too-many-locals
+    message = b"Hallo wereld"
+    mechanisms = [
+        mechanism
+        for mechanism in allmechanisms
+        if mechanism.startswith("SHA") and mechanism.endswith("_RSA_PKCS_PSS")
+    ]
+    for mech in mechanisms:
+        print("Testing RSA sign hashed: ", mech)
+        hashmethod = mech[: mech.index("_")].lower()
+        params = {
+            "label": "RSAkey",
+            "objtype": "PRIVATE_KEY",
+            "data": b64encode(
+                HasherToCryptoHash[hashmethod].new(message).digest()
+            ).decode(),
+            "mechanism": mech[mech.index("_") + 1 :],
+            "hashmethod": hashmethod,
+        }
+        signature = session.post(baseurl + "/sign", json=params).json()["result"]
+        assert len(b64decode(signature)) == bits / 8, "Length error RSA signpss"
+
+        print("Testing RSA verify: ", mech)
+        params = {
+            "label": "RSAkey",
+            "objtype": "PUBLIC_KEY",
+            "data": b64encode(message).decode(),
+            "mechanism": mech,
+            "signature": signature,
+            "hashmethod": hashmethod,
+        }
+        decrypted = session.post(baseurl + "/verify", json=params).json()["result"]
+        assert decrypted is True
+
+
+def testpssraw(
+    session, baseurl, allmechanisms, bits
+):  # pylint: disable=too-many-locals
+    message = b"Hallo wereld"
+    mechanisms = [
+        mechanism
+        for mechanism in allmechanisms
+        if mechanism.startswith("SHA") and mechanism.endswith("_RSA_PKCS_PSS")
+    ]
+    for mech in mechanisms:
+        print("Testing RSA raw sign: ", mech)
+        hashmethod = mech[: mech.index("_")].lower()
+        CryptoHash = HasherToCryptoHash[hashmethod]
+        with open("/dev/urandom", "rb") as randfile:
+            rawencoded = PKCS1_PSS.EMSA_PSS_ENCODE(
+                CryptoHash.new(message),
+                bits - 1,
+                randfile.read,
+                lambda x, y: PKCS1_PSS.MGF1(x, y, CryptoHash.new()),  # pylint: disable=cell-var-from-loop
+                CryptoHash.digest_size,
+            )
+        params = {
+            "label": "RSAkey",
+            "objtype": "PRIVATE_KEY",
+            "data": b64encode(rawencoded).decode(),
+            "mechanism": "RSA_X_509",
+        }
+        signature = session.post(baseurl + "/sign", json=params).json()["result"]
+        assert len(b64decode(signature)) == bits / 8, "Length error RSA encrypt"
+
+        print("Testing RSA verify from raw: ", mech)
+        params = {
+            "label": "RSAkey",
+            "objtype": "PUBLIC_KEY",
+            "data": b64encode(message).decode(),
+            "mechanism": mech,
+            "signature": signature,
+            "hashmethod": hashmethod,
+        }
+        decrypted = session.post(baseurl + "/verify", json=params).json()["result"]
+        assert decrypted is True
 
 
 def test(session, baseurl):
@@ -139,7 +259,7 @@ def test(session, baseurl):
         "data": b64encode(message).decode(),
     }
     signature = session.post(baseurl + "/sign", json=params).json()["result"]
-    assert len(b64decode(signature)) is bits / 8, "Length error RSA encrypt"
+    assert len(b64decode(signature)) == bits / 8, "Length error RSA sign"
 
     print("Testing RSA verify: default")
     params = {
@@ -153,6 +273,9 @@ def test(session, baseurl):
 
     allmechanisms = session.get(baseurl).json()["mechanisms"]
     testpkcs(session, baseurl, allmechanisms, bits, publickey)
+    # testpkcshash(session, baseurl, allmechanisms, bits)
     testpss(session, baseurl, allmechanisms, bits, publickey)
+    testpssraw(session, baseurl, allmechanisms, bits)
+    testpsshash(session, baseurl, allmechanisms, bits)
 
     return True
