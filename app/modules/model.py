@@ -11,8 +11,10 @@ class HSMError(Exception):
     """
     Base Exception for HSM Errors.
     """
+
     def __init__(self, message):
         self.message = message
+        super().__init__()
 
 
 class BaseModules(str, Enum):
@@ -32,6 +34,7 @@ class RSAbits(int, Enum):
     B12 = 2 ** 12
     B13 = 2 ** 13
     B14 = 2 ** 14
+
 
 class DSAbits(int, Enum):
     B10 = 2 ** 10
@@ -116,8 +119,10 @@ class RSAGenParam(RSAAESGenParam):  # pylint: disable=too-few-public-methods
 class AESGenParam(RSAAESGenParam):  # pylint: disable=too-few-public-methods
     bits: AESbits = AESbits.B256
 
+
 class DSAGenParam(RSAAESGenParam):  # pylint: disable=too-few-public-methods
     bits: RSAbits = DSAbits.B11
+
 
 class ECGenParam(BaseModel):  # pylint: disable=too-few-public-methods
     # TODO: pydantic validators: secp256r1 == prime256v1 (alias)

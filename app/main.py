@@ -230,8 +230,9 @@ async def unwrap(module: Modules, slot: Slots, so: SearchObject):
     doesexist(module, slot)
     return {"module": module, "slot": slot, "result": hsm.unwrap(module, slot, so)}
 
-@app.get("/quit", tags=["Development only"])
-async def quit():
+
+@app.get("/stopandexit", tags=["Development only"])
+async def stopandexit():
     sys.exit()
 
 

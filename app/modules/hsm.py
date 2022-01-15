@@ -27,32 +27,35 @@ from .model import (
     HashMethod,
 )
 
-asn1crypto.keys.NamedCurve.register('curve25519', '1.3.101.110', 32)
-asn1crypto.keys.NamedCurve.register('curve448', '1.3.101.111', 57)
-asn1crypto.keys.NamedCurve.register('ed25519', '1.3.101.112', 32)
-asn1crypto.keys.NamedCurve.register('ed448', '1.3.101.113', 57)
+asn1crypto.keys.NamedCurve.register("curve25519", "1.3.101.110", 32)
+asn1crypto.keys.NamedCurve.register("curve448", "1.3.101.111", 57)
+asn1crypto.keys.NamedCurve.register("ed25519", "1.3.101.112", 32)
+asn1crypto.keys.NamedCurve.register("ed448", "1.3.101.113", 57)
+
 
 class SharedInfo(asn1crypto.core.Sequence):
     _fields = [
-        ('algorithm', asn1crypto.cms.KeyEncryptionAlgorithm),
-        ('entityUInfo', asn1crypto.core.OctetString, {'explicit': 1, 'optional': True}),
-        ('suppPubInfo', asn1crypto.core.OctetString, {'explicit': 2})
+        ("algorithm", asn1crypto.cms.KeyEncryptionAlgorithm),
+        ("entityUInfo", asn1crypto.core.OctetString, {"explicit": 1, "optional": True}),
+        ("suppPubInfo", asn1crypto.core.OctetString, {"explicit": 2}),
     ]
+
 
 class KeyXchangeKDF:  # pylint: disable=too-few-public-methods
     @staticmethod
     def map(method: HashMethod):
-        maps = { 'dhSinglePass-stdDH-sha1kdf-scheme': pkcs11.KDF.SHA1,
-                 'dhSinglePass-stdDH-sha224kdf-scheme': pkcs11.KDF.SHA224,
-                 'dhSinglePass-stdDH-sha256kdf-scheme': pkcs11.KDF.SHA256,
-                 'dhSinglePass-stdDH-sha384kdf-scheme': pkcs11.KDF.SHA384,
-                 'dhSinglePass-stdDH-sha512kdf-scheme': pkcs11.KDF.SHA512,
-                 'sha1': pkcs11.KDF.SHA1,
-                 'sha224': pkcs11.KDF.SHA224,
-                 'sha256': pkcs11.KDF.SHA256,
-                 'sha384': pkcs11.KDF.SHA384,
-                 'sha512': pkcs11.KDF.SHA512
-               }
+        maps = {
+            "dhSinglePass-stdDH-sha1kdf-scheme": pkcs11.KDF.SHA1,
+            "dhSinglePass-stdDH-sha224kdf-scheme": pkcs11.KDF.SHA224,
+            "dhSinglePass-stdDH-sha256kdf-scheme": pkcs11.KDF.SHA256,
+            "dhSinglePass-stdDH-sha384kdf-scheme": pkcs11.KDF.SHA384,
+            "dhSinglePass-stdDH-sha512kdf-scheme": pkcs11.KDF.SHA512,
+            "sha1": pkcs11.KDF.SHA1,
+            "sha224": pkcs11.KDF.SHA224,
+            "sha256": pkcs11.KDF.SHA256,
+            "sha384": pkcs11.KDF.SHA384,
+            "sha512": pkcs11.KDF.SHA512,
+        }
         if method in maps:
             return maps[method]
         raise HSMError("Unsupported scheme")
@@ -140,7 +143,7 @@ class HSMModule:
     def list_slots(self, modname):
         return list(self.modules[modname])
 
-    def _so_to_attr(self, so: SearchObject):
+    def _so_to_attr(self, so: SearchObject):  # pylint: disable=no-self-use
         attrs = {}
         if so.label:
             attrs[Attribute.LABEL] = so.label
@@ -150,7 +153,19 @@ class HSMModule:
             attrs[Attribute.CLASS] = getattr(pkcs11.ObjectClass, so.objtype)
         return attrs
 
-    def _objtoobj(self, obj):
+    def _objtocontent(self, obj, want):  # pylint: disable=no-self-use
+        try:
+            if obj[want] and isinstance(obj[want], bytes):
+                return str(want).split(".")[1], obj[want].decode("utf-8")
+            if obj[want] is not None and "." in str(obj[want]):
+                return str(want).split(".")[1], str(obj[want]).split(".")[1]
+            if obj[want]:
+                return str(want).split(".")[1], obj[want]
+            return False, None
+        except:  # pylint: disable=bare-except
+            return False, None
+
+    def _objtoobj(self, obj):  # pylint: disable=no-self-use
         retobj = {}
         for attr in pkcs11.Attribute:
             try:
@@ -165,42 +180,33 @@ class HSMModule:
                     "EC_POINT",
                     "PRIME",
                     "SUBPRIME",
-                    "BASE"
+                    "BASE",
                 ]:
                     retobj[str(attr).split(".")[1]] = codecs.encode(obj[attr], "hex")
                 else:
-                    if obj[attr] and isinstance(obj[attr], bytes):
-                        retobj[str(attr).split(".")[1]] = obj[attr].decode("utf-8")
-                    elif obj[attr] is not None and "." in str(obj[attr]):
-                        retobj[str(attr).split(".")[1]] = str(obj[attr]).split(".")[1]
-                    elif obj[attr] is not None:
-                        retobj[str(attr).split(".")[1]] = obj[attr]
-            except:
+                    name, content = self._objtocontent(obj, attr)
+                    if name:
+                        retobj[name] = content
+            except:  # pylint: disable=bare-except
                 pass
-        if obj.key_type == pkcs11.KeyType.RSA:
-            try:
+        try:
+            if obj.key_type == pkcs11.KeyType.RSA:
                 retobj["publickey"] = asn1crypto.pem.armor(
                     "PUBLIC KEY", pkcs11.util.rsa.encode_rsa_public_key(obj)
                 )
-            except:
-                pass
-        if obj.key_type == pkcs11.KeyType.DSA:
-            try:
+            if obj.key_type == pkcs11.KeyType.DSA:
                 retobj["publickey"] = asn1crypto.pem.armor(
                     "PUBLIC KEY", pkcs11.util.dsa.encode_dsa_public_key(obj)
                 )
-            except:
-                pass
-        if (
-            obj.key_type == pkcs11.KeyType.EC
-            and obj.object_class == pkcs11.ObjectClass.PUBLIC_KEY
-        ):
-            try:
+            if (
+                obj.key_type == pkcs11.KeyType.EC
+                and obj.object_class == pkcs11.ObjectClass.PUBLIC_KEY
+            ):
                 retobj["publickey"] = asn1crypto.pem.armor(
                     "PUBLIC KEY", (pkcs11.util.ec.encode_ec_public_key(obj))
                 )
-            except:
-                pass
+        except:  # pylint: disable=bare-except
+            pass
         return retobj
 
     def gen_rsa(self, name, label, rsagen: RSAGenParam):
@@ -266,73 +272,95 @@ class HSMModule:
 
     def derive(self, name, label, so: SearchObject):
         return self._deencrypt("derive_key", name, label, so)
-# unwrap = optional ( aes128_wrap, aes192_wrap, aes256_wrap, aes128, aes192, aes256)
-# wrap = optional ( aes128_wrap, aes192_wrap, aes256_wrap, aes128, aes192, aes256)
-# sharedinfo = optional
-# algorithm = optional  (dhSinglePass-stdDH-sha1kdf-scheme , 224, 256,384,512, of gewoon SHA1, SHA256, SHA512, SHA384, SHA224)
-# otherpub = base64encoded
-# data = base64encoded data
-# size = number of returned bytes
 
-# voor unwrap:
-#   unwrap = aes128_wrap
-#   algorithm = dhSinglePass-stdDH-sha1kdf-scheme  # RFC5753 compatible met CMS
-#   otherpub = blablabla==
-#   data = wrapped data
-# returns
-#   aeskey
+    # unwrap = optional ( aes128_wrap, aes192_wrap, aes256_wrap, aes128, aes192, aes256)
+    # wrap = optional ( aes128_wrap, aes192_wrap, aes256_wrap, aes128, aes192, aes256)
+    # sharedinfo = optional
+    # algorithm = optional  (dhSinglePass-stdDH-sha1kdf-scheme , 224, 256,384,512,
+    #                        of gewoon SHA1, SHA256, SHA512, SHA384, SHA224)
+    # otherpub = base64encoded
+    # data = base64encoded data
+    # size = number of returned bytes
 
-# voor wrap:
-#   wrap = aes128_wrap
-#   algorithm = dhSinglePass-stdDH-sha1kdf-scheme
-#   otherpub = blablabla==
-#   data = (aes-key/data)-die-encrypted moet worden
-# returns
-#   wrapped_data
+    # voor unwrap:
+    #   unwrap = aes128_wrap
+    #   algorithm = dhSinglePass-stdDH-sha1kdf-scheme  # RFC5753 compatible met CMS
+    #   otherpub = blablabla==
+    #   data = wrapped data
+    # returns
+    #   aeskey
 
+    # voor wrap:
+    #   wrap = aes128_wrap
+    #   algorithm = dhSinglePass-stdDH-sha1kdf-scheme
+    #   otherpub = blablabla==
+    #   data = (aes-key/data)-die-encrypted moet worden
+    # returns
+    #   wrapped_data
 
-# voor normale ECDH key agreement:
-#   otherpub = blablabla==
-#   sharedinfo: indien gewenst
-#   data: ""
-#   size: aantal returned bits
-#   algorithm: optioneel: SHA256 ofzoiets
-    def _derive_key(self, so: SearchObject, toexec, data: bytes):
+    # voor normale ECDH key agreement:
+    #   otherpub = blablabla==
+    #   sharedinfo: indien gewenst
+    #   data: ""
+    #   size: aantal returned bits
+    #   algorithm: optioneel: SHA256 ofzoiets
+    def _derive_key(
+        self, so: SearchObject, toexec, data: bytes
+    ):  # pylint: disable=no-self-use
         # this seems counter intiutive, however if you want to return an AES key it should be extractable after
         # calculation
-        publictemplate = {pkcs11.Attribute.SENSITIVE: False, pkcs11.Attribute.EXTRACTABLE: True}
+        publictemplate = {
+            pkcs11.Attribute.SENSITIVE: False,
+            pkcs11.Attribute.EXTRACTABLE: True,
+        }
         otherpub = base64.b64decode(so.otherpub)
-        sharedinfo = so.sharedinfo if hasattr(so, 'sharedinfo') else None
-        thekdf = KeyXchangeKDF(so.algorithm) if hasattr(so, 'algorithm') else pkcs11.KDF.NULL
-        if hasattr(so, 'wrap') or hasattr(so, 'unwrap'):
-            wrap = so.wrap if hasattr(so, 'wrap') else so.unwrap
-            if hasattr(so, 'algorithm') and so.algorithm.startswith("dhSinglePass-stdDH-sha"):
-                sharedinfo = SharedInfo({'algorithm': {'algorithm': wrap}, 'suppPubInfo': pack(">L", aessize)}).dump()
+        sharedinfo = so.sharedinfo if hasattr(so, "sharedinfo") else None
+        thekdf = (
+            KeyXchangeKDF(so.algorithm) if hasattr(so, "algorithm") else pkcs11.KDF.NULL
+        )
+        if hasattr(so, "wrap") or hasattr(so, "unwrap"):
+            wrap = so.wrap if hasattr(so, "wrap") else so.unwrap
+            if hasattr(so, "algorithm") and so.algorithm.startswith(
+                "dhSinglePass-stdDH-sha"
+            ):
+                sharedinfo = SharedInfo(
+                    {
+                        "algorithm": {"algorithm": wrap},
+                        "suppPubInfo": pack(">L", aessize),
+                    }
+                ).dump()
             aessize = int(so.wrap[3:6])
-            newaes = toexec(pkcs11.KeyType.AES, aessize,
-                            mechanism_param=(thekdf,
-                                             sharedinfo,
-                                             otherpub)
-                           )
-            if hasattr(so, 'wrap'):
-                toexec_wrap = getattr(newaes, 'wrap_key')
+            newaes = toexec(
+                pkcs11.KeyType.AES,
+                aessize,
+                mechanism_param=(thekdf, sharedinfo, otherpub),
+            )
+            if hasattr(so, "wrap"):
+                toexec_wrap = getattr(newaes, "wrap_key")
             else:
-                toexec_wrap = getattr(newaes, 'unwrap_key')
+                toexec_wrap = getattr(newaes, "unwrap_key")
             return base64.b64encode(
                 toexec_wrap(
                     pkcs11.ObjectClass.SECRET_KEY,
                     pkcs11.KeyType.AES,
                     data,
-                    template=publictemplate
-                )['pkcs11.Attribute.VALUE']
+                    template=publictemplate,
+                )["pkcs11.Attribute.VALUE"]
             )
-        if hasattr(so, 'size'):
+        if hasattr(so, "size"):
             return base64.b64encode(
-                toexec(pkcs11.KeyType.AES, so.size, mechanism_param=(thekdf, sharedinfo, otherpub), template=publictemplate)['pkcs11.Attribute.VALUE']
+                toexec(
+                    pkcs11.KeyType.AES,
+                    so.size,
+                    mechanism_param=(thekdf, sharedinfo, otherpub),
+                    template=publictemplate,
+                )["pkcs11.Attribute.VALUE"]
             )
         return False
 
-    def _dsa(self, so: SearchObject, toexec, data: bytes, thefunc: str):
+    def _dsa(
+        self, so: SearchObject, toexec, data: bytes, thefunc: str
+    ):  # pylint: disable=no-self-use
         mechanism_param = None
         if so.mechanism:
             if thefunc == "verify":
@@ -351,15 +379,26 @@ class HSMModule:
             )
         return False
 
-    def _rsa(self, so: SearchObject, toexec, data: bytes, thefunc: str):
+    def _rsa(
+        self, so: SearchObject, toexec, data: bytes, thefunc: str
+    ):  # pylint: disable=no-self-use
         mechanism_param = None
-        if (so.mechanism in ["RSA_PKCS_OAEP"] or (so.mechanism and so.mechanism.endswith('RSA_PKCS_PSS'))) and so.hashmethod:
-            if MethodSize.map(so.hashmethod) is not len(data) and thefunc in ['verify', 'sign'] and so.mechanism in ["RSA_PKCS_OAEP", "RSA_PKCS_PSS"]:
+        if (
+            so.mechanism in ["RSA_PKCS_OAEP"]
+            or (so.mechanism and so.mechanism.endswith("RSA_PKCS_PSS"))
+        ) and so.hashmethod:
+            if (
+                MethodSize.map(so.hashmethod) is not len(data)
+                and thefunc in ["verify", "sign"]
+                and so.mechanism in ["RSA_PKCS_OAEP", "RSA_PKCS_PSS"]
+            ):
                 raise HSMError("Data length does not match hash method")
             mechanism_param = (
                 MethodMechanism.map(so.hashmethod),
                 MethodMGF.map(so.hashmethod),
-                MethodSize.map(so.hashmethod) if thefunc in ['verify', 'sign'] else None,
+                MethodSize.map(so.hashmethod)
+                if thefunc in ["verify", "sign"]
+                else None,
             )
         if so.mechanism:
             if thefunc == "verify":
@@ -380,10 +419,12 @@ class HSMModule:
             return toexec(data, base64.b64decode(so.signature))
         return base64.b64encode(toexec(data))
 
-    def _aes(self, so: SearchObject, toexec, data: bytes, thefunc: str, module):
+    def _aes(
+        self, so: SearchObject, toexec, data: bytes, thefunc: str, module
+    ):  # pylint: disable=no-self-use, too-many-arguments
         theiv = (
             base64.b64decode(so.iv)
-            if hasattr(so, 'iv') and so.iv
+            if hasattr(so, "iv") and so.iv
             else module.generate_random(128)
         )
         if so.mechanism:
@@ -402,9 +443,7 @@ class HSMModule:
                 )
             )
         elif thefunc == "verify":
-            return toexec(
-                data, base64.b64decode(so.signature), mechanism_param=theiv
-            )
+            return toexec(data, base64.b64decode(so.signature), mechanism_param=theiv)
         retdata = base64.b64encode(toexec(data, mechanism_param=theiv))
         if thefunc == "encrypt":
             return {"iv": base64.b64encode(theiv), "data": retdata}
@@ -507,26 +546,16 @@ class HSMModule:
                 objs[objtype] = []
             retobj: dict = {"flags": [], "usage": []}
             for want in wanted_attr:
-                try:
-                    if obj[want] and isinstance(obj[want], bytes):
-                        retobj[str(want).split(".")[1]] = obj[want].decode("utf-8")
-                    elif obj[want] is not None and "." in str(obj[want]):
-                        retobj[str(want).split(".")[1]] = str(obj[want]).split(".")[1]
-                    elif obj[want]:
-                        retobj[str(want).split(".")[1]] = obj[want]
-                except:
-                    continue
+                name, content = self._objtocontent(obj, want)
+                if name:
+                    retobj[name] = content
             for want in flags_attr:
-                try:
-                    if obj[want]:
-                        retobj["flags"].append(str(want).split(".")[1])
-                except:
-                    pass
+                name, content = self._objtocontent(obj, want)
+                if name and content:
+                    retobj["flags"].append(name)
             for want in usage_attr:
-                try:
-                    if obj[want]:
-                        retobj["usage"].append(str(want).split(".")[1])
-                except:
-                    pass
+                name, content = self._objtocontent(obj, want)
+                if name and content:
+                    retobj["usage"].append(name)
             objs[objtype].append(retobj)
         return objs
