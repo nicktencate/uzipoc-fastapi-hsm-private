@@ -63,6 +63,7 @@ class MethodMechanism:  # pylint: disable=too-few-public-methods
     def map(method: HashMethod):
         maps = {
             HashMethod.SHA1: pkcs11.Mechanism.SHA_1,
+            HashMethod.SHA224: pkcs11.Mechanism.SHA224,
             HashMethod.SHA256: pkcs11.Mechanism.SHA256,
             HashMethod.SHA384: pkcs11.Mechanism.SHA384,
             HashMethod.SHA512: pkcs11.Mechanism.SHA512,
@@ -77,6 +78,7 @@ class MethodMGF:  # pylint: disable=too-few-public-methods
     def map(method: HashMethod):
         maps = {
             HashMethod.SHA1: pkcs11.MGF.SHA1,
+            HashMethod.SHA224: pkcs11.MGF.SHA224,
             HashMethod.SHA256: pkcs11.MGF.SHA256,
             HashMethod.SHA384: pkcs11.MGF.SHA384,
             HashMethod.SHA512: pkcs11.MGF.SHA512,
@@ -91,6 +93,7 @@ class MethodSize:  # pylint: disable=too-few-public-methods
     def map(method: HashMethod):
         maps = {
             HashMethod.SHA1: hashlib.sha1().digest_size,
+            HashMethod.SHA224: hashlib.sha224().digest_size,
             HashMethod.SHA256: hashlib.sha256().digest_size,
             HashMethod.SHA384: hashlib.sha384().digest_size,
             HashMethod.SHA512: hashlib.sha512().digest_size,
@@ -350,8 +353,8 @@ class HSMModule:
 
     def _rsa(self, so: SearchObject, toexec, data: bytes, thefunc: str):
         mechanism_param = None
-        if so.mechanism in ["RSA_PKCS_OAEP", "RSA_PKCS_PSS"] and so.hashmethod:
-            if MethodSize.map(so.hashmethod) is not len(data) and thefunc in ['verify', 'sign']:
+        if (so.mechanism in ["RSA_PKCS_OAEP"] or (so.mechanism and so.mechanism.endswith('RSA_PKCS_PSS'))) and so.hashmethod:
+            if MethodSize.map(so.hashmethod) is not len(data) and thefunc in ['verify', 'sign'] and so.mechanism in ["RSA_PKCS_OAEP", "RSA_PKCS_PSS"]:
                 raise HSMError("Data length does not match hash method")
             mechanism_param = (
                 MethodMechanism.map(so.hashmethod),
@@ -373,6 +376,8 @@ class HSMModule:
                     mechanism_param=mechanism_param,
                 )
             )
+        if thefunc == "verify":
+            return toexec(data, base64.b64decode(so.signature))
         return base64.b64encode(toexec(data))
 
     def _aes(self, so: SearchObject, toexec, data: bytes, thefunc: str, module):

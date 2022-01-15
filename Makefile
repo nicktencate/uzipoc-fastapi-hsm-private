@@ -30,7 +30,7 @@ run:
 	. .venv/bin/activate && ${env} python3 -m hypercorn app.main:app --reload -b 0
 testrun:
 	bash ./bootstrap.sh
-	. .venv/bin/activate && ${env} python3 -m hypercorn app.main:app --reload -b 0
+	SOFTHSM2_CONF=./softhsm2.conf . .venv/bin/activate && ${env} python3 -m hypercorn app.main:app --reload -b 0
 
 runtest:
 	. .venv/bin/activate && ${env} python3 -m tests.run

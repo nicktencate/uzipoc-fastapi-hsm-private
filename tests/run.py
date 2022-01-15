@@ -59,5 +59,10 @@ from tests import aesendecrypt
 assert aesendecrypt.test(s, baseurl), "AES encrypt and decrypt error"
 print("Time: ",time()-start)
 
+start = time()
+from tests import rsasign
+assert rsasign.test(s, baseurl), "RSA sign and verify error"
+print("Time: ",time()-start)
+
 
 print("All tests did not fail too obviously")
