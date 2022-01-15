@@ -24,7 +24,7 @@ check-types: venv ## Check for type issues with mypy
 	@. .venv/bin/activate && ${env} python3 -m mypy --check app tests
 
 fix:
-	@. .venv/bin/activate && ${env} python3 -m black app 
+	@. .venv/bin/activate && ${env} python3 -m black app tests
 
 run:
 	. .venv/bin/activate && ${env} python3 -m hypercorn app.main:app --reload -b 0

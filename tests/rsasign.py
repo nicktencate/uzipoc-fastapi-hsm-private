@@ -217,7 +217,9 @@ def testpssraw(
                 CryptoHash.new(message),
                 bits - 1,
                 randfile.read,
-                lambda x, y: PKCS1_PSS.MGF1(x, y, CryptoHash.new()),  # pylint: disable=cell-var-from-loop
+                lambda x, y: PKCS1_PSS.MGF1(
+                    x, y, CryptoHash.new()
+                ),  # pylint: disable=cell-var-from-loop
                 CryptoHash.digest_size,
             )
         params = {
