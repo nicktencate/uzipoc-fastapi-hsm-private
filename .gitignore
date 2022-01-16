@@ -11,3 +11,4 @@ secrets/
 tokens
 softhsm2.conf
 conf.yml
+tests/*.pem

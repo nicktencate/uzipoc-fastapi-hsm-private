@@ -288,7 +288,6 @@ def test(session, baseurl):
     assert decrypted is True
 
     allmechanisms = session.get(baseurl).json()["mechanisms"]
-    print(allmechanisms)
     testpkcs(session, baseurl, allmechanisms, bits, publickey)
     testpkcshash(session, baseurl, allmechanisms, bits)
     testpss(session, baseurl, allmechanisms, bits, publickey)
