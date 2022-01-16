@@ -2,6 +2,7 @@ import hashlib
 import base64
 
 import asn1crypto.pem
+import asn1crypto.algos
 
 import tests.certgen
 
@@ -27,7 +28,7 @@ def test(session, baseurl):
         )
         tbscert = asn1crypto.x509.TbsCertificate(newcertcontent)
 
-        hashmethod = signature_alg["algorithm"][: signature_alg["algorithm"].index("_")]
+        hashmethod = asn1crypto.algos.SignedDigestAlgorithm(signature_alg).hash_algo
         params = {
             "label": "ECkey",
             "objtype": "PRIVATE_KEY",

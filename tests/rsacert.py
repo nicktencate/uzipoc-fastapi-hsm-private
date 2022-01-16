@@ -19,7 +19,7 @@ def test(session, baseurl):  # pylint: disable=too-many-locals
             "algorithm": {"algorithm": "rsa"},
             "public_key": asn1crypto.keys.RSAPublicKey.load(
                 asn1crypto.pem.unarmor(publickey)[2]
-            ),
+            ).dump(),
         }
     )
 

@@ -16,6 +16,7 @@ from tests import ecsign
 from tests import edsign
 from tests import rsacert
 from tests import eccert
+from tests import edcert
 
 BASE = "http://localhost:8000/hsm/"
 
@@ -57,6 +58,10 @@ if len(sys.argv) < 2:
     aestest = genaes.test(s, baseurl)
     assert len(aestest["result"]) == 1, "AES generation error"
     print("Time: ", time() - start)
+
+start = time()
+assert edcert.test(s, baseurl), "ED cert create error"
+print("Time: ", time() - start)
 
 start = time()
 assert rsaendecrypt.test(s, baseurl), "RSA encrypt and decrypt error"
