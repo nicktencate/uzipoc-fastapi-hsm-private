@@ -31,6 +31,7 @@ def test(session, baseurl):  # pylint: disable=too-many-locals
         "sha384_rsa",
         "sha512_rsa",
     ]:
+        print(f"Creating rsa cert with: {method}")
         signature_alg = {"algorithm": method}
         newcertcontent = tests.certgen.certgen(
             "rsatestcert", asn1publickey, signature_alg
@@ -69,7 +70,8 @@ def test(session, baseurl):  # pylint: disable=too-many-locals
         params = {
             "label": "RSAcert",
             "objtype": "CERTIFICATE",
-            "data": base64.b64encode(finalcertpem),
+            "data": base64.b64encode(finalcertpem).decode(),
         }
+        print(session.post(baseurl + "/import", json=params).text)
 
     return True

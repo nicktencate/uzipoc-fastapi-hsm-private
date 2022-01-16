@@ -11,6 +11,7 @@ import pkcs11.util.dsa
 import pkcs11.types
 from pkcs11 import Attribute
 from pkcs11.util.ec import encode_named_curve_parameters
+import pkcs11.util.x509
 
 import asn1crypto.cms
 import asn1crypto.core
@@ -25,6 +26,7 @@ from .model import (
     AESGenParam,
     ECGenParam,
     HashMethod,
+    ImportObject,
 )
 
 asn1crypto.keys.NamedCurve.register("curve25519", "1.3.101.110", 32)
@@ -181,8 +183,18 @@ class HSMModule:
                     "PRIME",
                     "SUBPRIME",
                     "BASE",
+                    "CHECK_VALUE",
                 ]:
                     retobj[str(attr).split(".")[1]] = codecs.encode(obj[attr], "hex")
+                elif str(attr).split(".")[1] in [
+                    "SUBJECT",
+                    "ISSUER",
+                ]:
+                    retobj[str(attr).split(".")[1]] = asn1crypto.x509.Name().load(obj[attr]).native
+                elif str(attr).split(".")[1] in [
+                    "SERIAL_NUMBER",
+                ]:
+                    retobj[str(attr).split(".")[1]] = asn1crypto.core.Integer().load(obj[attr]).native
                 else:
                     name, content = self._objtocontent(obj, attr)
                     if name:
@@ -251,6 +263,18 @@ class HSMModule:
             obj.destroy()
             return {"removed": 1}
         return {"removed": 0}
+
+    def importdata(self, name, label, so: ImportObject):
+        storetemplate = {
+            pkcs11.Attribute.TOKEN: True,
+        }
+        attrs = self._so_to_attr(so)
+        data = base64.b64decode(so.data)
+        attrs.update(storetemplate)
+        datatype, _, content = asn1crypto.pem.unarmor(data)
+        if datatype == 'CERTIFICATE':
+           attrs.update(pkcs11.util.x509.decode_x509_certificate(content))
+           return self._objtoobj(self.modules[name][label].create_object(attrs))
 
     def wrap(self, name, label, so: SearchObject):
         return self._deencrypt("wrap", name, label, so)

@@ -71,6 +71,9 @@ class SearchObject(BaseModel):  # pylint: disable=too-few-public-methods
     objid: Optional[str] = None
 
 
+class ImportObject(SearchObject):  # pylint: disable=too-few-public-methods
+    data: Optional[str] = None
+
 class DecryptEncryptObject(SearchObject):  # pylint: disable=too-few-public-methods
     data: Optional[str] = None
     # TODO: Pydantic validator default mechanism: SHA256_RSA_PKCS_PSS

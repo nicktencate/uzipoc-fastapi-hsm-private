@@ -34,7 +34,7 @@ testrun:
 
 runtest:
 	. .venv/bin/activate && ${env} python3 -m tests.run
-	@openssl verify -CAfile tests/test-cert-rsa.pem tests/test-cert-rsa.pem
+	@for cert in tests/test-cert-*.pem;do openssl verify -CAfile $$cert $$cert;done
 
 runtest-dev:
 	. .venv/bin/activate && ${env} python3 -m tests.run dev

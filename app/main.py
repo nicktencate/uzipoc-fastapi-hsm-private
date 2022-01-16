@@ -26,6 +26,7 @@ from .modules.model import (
     VerifyAESObject,
     SignRSAObject,
     SignAESObject,
+    ImportObject,
 )
 
 with open("conf.yml", "r", encoding="utf-8") as yamlfile:
@@ -230,6 +231,14 @@ async def unwrap(module: Modules, slot: Slots, so: SearchObject):
     doesexist(module, slot)
     return {"module": module, "slot": slot, "result": hsm.unwrap(module, slot, so)}
 
+@app.post("/hsm/{module}/{slot}/import", tags=["Import"])
+async def importdata(module: Modules, slot: Slots, so: ImportObject):
+    doesexist(module, slot)
+    return {
+        "module": module,
+        "slot": slot,
+        "objects": hsm.importdata(module, slot, so),
+    }
 
 @app.get("/stopandexit", tags=["Development only"])
 async def stopandexit():

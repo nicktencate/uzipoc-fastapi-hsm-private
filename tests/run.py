@@ -60,10 +60,6 @@ if len(sys.argv) < 2:
     print("Time: ", time() - start)
 
 start = time()
-assert edcert.test(s, baseurl), "ED cert create error"
-print("Time: ", time() - start)
-
-start = time()
 assert rsaendecrypt.test(s, baseurl), "RSA encrypt and decrypt error"
 print("Time: ", time() - start)
 
@@ -89,6 +85,10 @@ print("Time: ", time() - start)
 
 start = time()
 assert eccert.test(s, baseurl), "EC cert create error"
+print("Time: ", time() - start)
+
+start = time()
+assert edcert.test(s, baseurl), "ED cert create error"
 print("Time: ", time() - start)
 
 print("All tests did not fail too obviously")
