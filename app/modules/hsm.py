@@ -517,7 +517,7 @@ class HSMModule:
             if obj.key_type == pkcs11.KeyType.AES:
                 return self._aes(so, toexec, data, thefunc, self.modules[name][label])
             if thefunc == "verify":
-                return toexec(data, so.signature)
+                return toexec(data, base64.b64decode(so.signature))
             retdata = toexec(data)
             return base64.b64encode(retdata)
         raise HSMError("No such key")

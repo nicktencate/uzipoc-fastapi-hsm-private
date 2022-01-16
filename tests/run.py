@@ -13,6 +13,7 @@ from tests import rsaendecrypt
 from tests import aesendecrypt
 from tests import rsasign
 from tests import ecsign
+from tests import edsign
 from tests import rsacert
 from tests import eccert
 
@@ -71,6 +72,10 @@ print("Time: ", time() - start)
 
 start = time()
 assert ecsign.test(s, baseurl), "EC sign and verify error"
+print("Time: ", time() - start)
+
+start = time()
+assert edsign.test(s, baseurl), "ED sign and verify error"
 print("Time: ", time() - start)
 
 start = time()
