@@ -476,7 +476,9 @@ class HSMModule:
             return {"data": retdata}
         return False
 
-    def _deencrypt(self, thefunc: str, name: str, label: str, so: SearchObject):
+    def _deencrypt(
+        self, thefunc: str, name: str, label: str, so: SearchObject
+    ):  # pylint: disable=too-many-return-statements
         """
         Given search parameters, find the first object within a 'module:slot' that complies with
         this search. If it exists, execute the function using the provided searchobject. Where the following

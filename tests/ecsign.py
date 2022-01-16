@@ -1,11 +1,11 @@
 from base64 import b64encode, b64decode
-import hashlib
+
 
 def test(session, baseurl):
 
     message = b"Hallo wereld"
-    params = {"label": "ECkey", "objtype": "PUBLIC_KEY"}
-    pk = session.post(baseurl, json=params).json()["objects"][0]
+    # params = {"label": "ECkey", "objtype": "PUBLIC_KEY"}
+    # pk = session.post(baseurl, json=params).json()["objects"][0]
 
     # Basic sign and verify
     # For a short message of 1 block it's MODULES_BITS long
@@ -25,7 +25,7 @@ def test(session, baseurl):
         "objtype": "PUBLIC_KEY",
         "data": b64encode(message).decode(),
         "mechanism": "ECDSA",
-        "signature": signature
+        "signature": signature,
     }
     decrypted = session.post(baseurl + "/verify", json=params).json()["result"]
     assert decrypted is True
