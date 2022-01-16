@@ -34,9 +34,11 @@ testrun:
 
 runtest:
 	. .venv/bin/activate && ${env} python3 -m tests.run
+	@openssl verify -CAfile tests/test-cert-rsa.pem tests/test-cert-rsa.pem
 
 runtest-dev:
 	. .venv/bin/activate && ${env} python3 -m tests.run dev
+	@openssl verify -CAfile tests/test-cert-rsa.pem tests/test-cert-rsa.pem
 
 .bootstrap:
 	bash ./bootstrap.sh

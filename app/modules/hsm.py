@@ -379,6 +379,29 @@ class HSMModule:
             )
         return False
 
+    def _ec(
+        self, so: SearchObject, toexec, data: bytes, thefunc: str
+    ):  # pylint: disable=no-self-use
+        mechanism_param = None
+        if so.mechanism:
+            if thefunc == "verify":
+                return toexec(
+                    data,
+                    base64.b64decode(so.signature),
+                    mechanism=getattr(pkcs11.Mechanism, so.mechanism),
+                    mechanism_param=mechanism_param,
+                )
+            return base64.b64encode(
+                toexec(
+                    data,
+                    mechanism=getattr(pkcs11.Mechanism, so.mechanism),
+                    mechanism_param=mechanism_param,
+                )
+            )
+        if thefunc == "verify":
+            return toexec(data, base64.b64decode(so.signature))
+        return base64.b64encode(toexec(data))
+
     def _rsa(
         self, so: SearchObject, toexec, data: bytes, thefunc: str
     ):  # pylint: disable=no-self-use
@@ -487,6 +510,8 @@ class HSMModule:
                 return self._rsa(so, toexec, data, thefunc)
             if obj.key_type == pkcs11.KeyType.DSA:
                 return self._dsa(so, toexec, data, thefunc)
+            if obj.key_type == pkcs11.KeyType.EC:
+                return self._ec(so, toexec, data, thefunc)
             if obj.key_type == pkcs11.KeyType.AES:
                 return self._aes(so, toexec, data, thefunc, self.modules[name][label])
             if thefunc == "verify":

@@ -68,7 +68,10 @@ def testpkcs(
         )
 
 
-# TODO: this fails
+# in this function the signer does not receive the data,
+# it does receive the constructed hash1asn message that needs to be signed.
+# the verifier does receive the whole message and the hashing is done by the HSM
+# this is deliberately different to show and test how it works.
 def testpkcshash(
     session, baseurl, allmechanisms, bits
 ):  # pylint: disable=too-many-locals
@@ -83,16 +86,19 @@ def testpkcshash(
     for mech in mechanisms:
         print("Testing RSA sign: ", mech)
         hashmethod = mech[: mech.index("_")].lower()
+        hashasn1 = asn1crypto.tsp.MessageImprint(
+            {
+                "hash_algorithm": {"algorithm": hashmethod},
+                "hashed_message": HasherToCryptoHash[hashmethod].new(message).digest(),
+            }
+        )
         params = {
             "label": "RSAkey",
             "objtype": "PRIVATE_KEY",
-            "data": b64encode(
-                HasherToCryptoHash[hashmethod].new(message).digest()
-            ).decode(),
+            "data": b64encode(hashasn1.dump()).decode(),
             "mechanism": mech[mech.index("_") + 1 :],
             "hashmethod": hashmethod,
         }
-        print(params)
         signature = session.post(baseurl + "/sign", json=params).json()["result"]
         assert len(b64decode(signature)) == bits / 8, "Length error RSA sign pkcs"
 
@@ -162,6 +168,14 @@ def testpss(
         ), "Non-HSM verify error"
 
 
+# in this function the signer does not receive the data,
+# it does receive the constructed hash1asn message that needs to be signed.
+# the verifier does receive the whole message and the hashing is done by the HSM
+# this is deliberately different to show and test how it works.
+# The difference with the PKCS and PSS methods is that there is not need
+# to pack the hash into a structure, since PSS has an inherent checking function
+# for length.
+
 def testpsshash(
     session, baseurl, allmechanisms, bits
 ):  # pylint: disable=too-many-locals
@@ -218,8 +232,8 @@ def testpssraw(
                 bits - 1,
                 randfile.read,
                 lambda x, y: PKCS1_PSS.MGF1(
-                    x, y, CryptoHash.new()
-                ),  # pylint: disable=cell-var-from-loop
+                    x, y, CryptoHash.new()  # pylint: disable=cell-var-from-loop
+                ),
                 CryptoHash.digest_size,
             )
         params = {
@@ -274,8 +288,9 @@ def test(session, baseurl):
     assert decrypted is True
 
     allmechanisms = session.get(baseurl).json()["mechanisms"]
+    print(allmechanisms)
     testpkcs(session, baseurl, allmechanisms, bits, publickey)
-    # testpkcshash(session, baseurl, allmechanisms, bits)
+    testpkcshash(session, baseurl, allmechanisms, bits)
     testpss(session, baseurl, allmechanisms, bits, publickey)
     testpssraw(session, baseurl, allmechanisms, bits)
     testpsshash(session, baseurl, allmechanisms, bits)
