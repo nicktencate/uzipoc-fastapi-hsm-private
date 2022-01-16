@@ -1,9 +1,7 @@
-import Crypto.PublicKey.RSA
 import asn1crypto.pem
-import random
-import datetime
 import hashlib
 import base64
+import tests.certgen
 
 def test(session, baseurl):
     params = {
@@ -11,53 +9,19 @@ def test(session, baseurl):
         "objtype": "PUBLIC_KEY",
     }
     publickey = session.post(baseurl, json=params).json()['objects'][0]['publickey'].encode()
-    asn1publickey = asn1crypto.keys.RSAPublicKey.load(asn1crypto.pem.unarmor(publickey)[2])
-    pubkey = Crypto.PublicKey.RSA.importKey(publickey)
+    rsapublickey = asn1crypto.keys.RSAPublicKey.load(asn1crypto.pem.unarmor(publickey)[2])
+    asn1publickey = asn1crypto.keys.PublicKeyInfo({'algorithm': {'algorithm': 'rsa'}, 'public_key': rsapublickey})
 
     signature_alg = {'algorithm': 'sha256_rsa'}
-    not_before = datetime.datetime.now().astimezone()
-    not_after = not_before.replace(not_before.year+1)
-    newcertcontent = {
-        'version': 'v3',
-        'serial_number': random.randint(a=2**64,b=2**65-1),
-        'signature': signature_alg,
-        'issuer': asn1crypto.x509.Name.build({'common_name': 'rsatestcert'}),
-        'validity': {
-            'not_before': {'utc_time': not_before},
-            'not_after': {'utc_time': not_after},
-        },
-        'subject': asn1crypto.x509.Name.build({'common_name': 'rsatestcert'}),
-        'subject_public_key_info': {'algorithm': {'algorithm': 'rsa'},
-                                    'public_key': asn1publickey,
-                                   },
-        'extensions': [{'extn_id': 'key_identifier',
-                        'critical': False,
-                        'extn_value': hashlib.sha1(asn1publickey.dump()).digest(),
-                       },
-                       {'extn_id': 'authority_key_identifier',
-                        'critical': False,
-                        'extn_value': {'key_identifier': hashlib.sha1(asn1publickey.dump()).digest(),
-                                       'authority_cert_issuer': None,
-                                       'authority_cert_serial_number': None,
-                                      },
-                       },
-                       {'extn_id': 'basic_constraints',
-                        'critical': True,
-                        'extn_value': {'ca': True,
-                                       'path_len_constraint': None,
-                                      }
-                       }
-                      ]
-    
-    
-        }
+    newcertcontent = tests.certgen.certgen('rsatestcert', asn1publickey, signature_alg)
     tbscert = asn1crypto.x509.TbsCertificate(newcertcontent)
 
-    hashmethod = 'sha256'
+    hashmethod = signature_alg['algorithm'][:signature_alg['algorithm'].index('_')]
+
     hashasn1 = asn1crypto.tsp.MessageImprint(
         {
             "hash_algorithm": {"algorithm": hashmethod},
-            "hashed_message": hashlib.sha256(tbscert.dump()).digest(),
+            "hashed_message": getattr(hashlib,hashmethod)(tbscert.dump()).digest(),
         }
     )
     params = {
@@ -68,6 +32,7 @@ def test(session, baseurl):
         "hashmethod": hashmethod,
     }
     signature = base64.b64decode(session.post(baseurl + "/sign", json=params).json()["result"])
+
     signedcertparams = {
         'tbs_certificate': tbscert,
         'signature_algorithm': signature_alg,

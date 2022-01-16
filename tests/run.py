@@ -14,6 +14,7 @@ from tests import aesendecrypt
 from tests import rsasign
 from tests import ecsign
 from tests import rsacert
+from tests import eccert
 
 BASE = "http://localhost:8000/hsm/"
 
@@ -58,6 +59,10 @@ if len(sys.argv) < 2:
 
 start = time()
 assert rsacert.test(s, baseurl), "RSA cert create error"
+print("Time: ", time() - start)
+
+start = time()
+assert eccert.test(s, baseurl), "EC cert create error"
 print("Time: ", time() - start)
 
 start = time()
