@@ -57,7 +57,7 @@ def test(session, baseurl):
         }
         assert (
             len(
-                session.post(baseurl + "/import", json=params).json()["objects"][
+                session.post(baseurl + "/import", json=params).json()["objects"][0][
                     "CHECK_VALUE"
                 ]
             )

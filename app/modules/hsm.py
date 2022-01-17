@@ -184,9 +184,7 @@ class HSMModule:  # pylint: disable=too-many-public-methods
         retobj = {}
         for attr in pkcs11.Attribute:
             try:
-                # print(attr, obj[attr])
                 if str(attr).split(".")[1] in ["EC_PARAMS"]:
-                    print(obj[attr])
                     retobj[str(attr).split(".")[1]] = ECDomainParameters.load(
                         obj[attr]
                     ).native
@@ -333,9 +331,11 @@ class HSMModule:  # pylint: disable=too-many-public-methods
                 if keytype == "rsa":
                     attrs.update(
                         pkcs11.util.rsa.decode_rsa_public_key(
-                            asn1crypto.keys.PublicKeyInfo.load(content)[
-                                "public_key"
-                            ].native
+                            asn1crypto.keys.RSAPublicKey(
+                                asn1crypto.keys.PublicKeyInfo.load(content)[
+                                    "public_key"
+                                ].native
+                            ).dump()
                         )
                     )
                     return [
