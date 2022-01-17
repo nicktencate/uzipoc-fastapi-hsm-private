@@ -69,9 +69,16 @@ def test(session, baseurl):  # pylint: disable=too-many-locals
             file.write(finalcertpem)
         params = {
             "label": "RSAcert",
-            "objtype": "CERTIFICATE",
+            "pem": True,
             "data": base64.b64encode(finalcertpem).decode(),
         }
-        print(session.post(baseurl + "/import", json=params).text)
+        assert (
+            len(
+                session.post(baseurl + "/import", json=params).json()["objects"][
+                    "CHECK_VALUE"
+                ]
+            )
+            == 6
+        ), "ED certificate store error"
 
     return True

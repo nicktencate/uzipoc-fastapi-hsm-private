@@ -51,8 +51,17 @@ def test(session, baseurl):
         with open(f"tests/test-cert-ec-{method}.pem", "wb") as file:
             file.write(finalcertpem)
         params = {
-            "label": "RSAcert",
-            "objtype": "CERTIFICATE",
-            "data": base64.b64encode(finalcertpem),
+            "label": "ECcert",
+            "pem": True,
+            "data": base64.b64encode(finalcertpem).decode(),
         }
+        assert (
+            len(
+                session.post(baseurl + "/import", json=params).json()["objects"][
+                    "CHECK_VALUE"
+                ]
+            )
+            == 6
+        ), "ED certificate store error"
+
     return True

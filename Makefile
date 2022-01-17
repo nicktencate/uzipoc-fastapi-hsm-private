@@ -33,6 +33,7 @@ testrun:
 	SOFTHSM2_CONF=./softhsm2.conf . .venv/bin/activate && ${env} python3 -m hypercorn app.main:app --reload -b 0
 
 runtest:
+	./tests/genopensslkeys.sh
 	. .venv/bin/activate && ${env} python3 -m tests.run
 	@for cert in tests/test-cert-*.pem;do openssl verify -CAfile $$cert $$cert;done
 

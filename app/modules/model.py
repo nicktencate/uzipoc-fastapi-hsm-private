@@ -73,6 +73,8 @@ class SearchObject(BaseModel):  # pylint: disable=too-few-public-methods
 
 class ImportObject(SearchObject):  # pylint: disable=too-few-public-methods
     data: Optional[str] = None
+    pem: Optional[bool] = False
+
 
 class DecryptEncryptObject(SearchObject):  # pylint: disable=too-few-public-methods
     data: Optional[str] = None

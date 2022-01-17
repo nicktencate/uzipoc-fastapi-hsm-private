@@ -33,6 +33,18 @@ asn1crypto.keys.NamedCurve.register("curve25519", "1.3.101.110", 32)
 asn1crypto.keys.NamedCurve.register("curve448", "1.3.101.111", 57)
 asn1crypto.keys.NamedCurve.register("ed25519", "1.3.101.112", 32)
 asn1crypto.keys.NamedCurve.register("ed448", "1.3.101.113", 57)
+asn1crypto.keys.PublicKeyAlgorithmId._map[  # pylint: disable=protected-access
+    "1.3.101.110"
+] = "x25519"
+asn1crypto.keys.PublicKeyAlgorithmId._map[  # pylint: disable=protected-access
+    "1.3.101.111"
+] = "x448"
+asn1crypto.keys.PublicKeyAlgorithmId._map[  # pylint: disable=protected-access
+    "1.3.101.112"
+] = "ed25519"
+asn1crypto.keys.PublicKeyAlgorithmId._map[  # pylint: disable=protected-access
+    "1.3.101.113"
+] = "ed448"
 
 
 class SharedInfo(asn1crypto.core.Sequence):
@@ -108,7 +120,8 @@ class MethodSize:  # pylint: disable=too-few-public-methods
         raise HSMError("Unsupported method")
 
 
-class HSMModule:
+# All public are public?
+class HSMModule:  # pylint: disable=too-many-public-methods
     modules = {}
     libs = {}
 
@@ -173,6 +186,7 @@ class HSMModule:
             try:
                 # print(attr, obj[attr])
                 if str(attr).split(".")[1] in ["EC_PARAMS"]:
+                    print(obj[attr])
                     retobj[str(attr).split(".")[1]] = ECDomainParameters.load(
                         obj[attr]
                     ).native
@@ -190,11 +204,15 @@ class HSMModule:
                     "SUBJECT",
                     "ISSUER",
                 ]:
-                    retobj[str(attr).split(".")[1]] = asn1crypto.x509.Name().load(obj[attr]).native
+                    retobj[str(attr).split(".")[1]] = (
+                        asn1crypto.x509.Name().load(obj[attr]).native
+                    )
                 elif str(attr).split(".")[1] in [
                     "SERIAL_NUMBER",
                 ]:
-                    retobj[str(attr).split(".")[1]] = asn1crypto.core.Integer().load(obj[attr]).native
+                    retobj[str(attr).split(".")[1]] = (
+                        asn1crypto.core.Integer().load(obj[attr]).native
+                    )
                 else:
                     name, content = self._objtocontent(obj, attr)
                     if name:
@@ -264,17 +282,89 @@ class HSMModule:
             return {"removed": 1}
         return {"removed": 0}
 
-    def importdata(self, name, label, so: ImportObject):
+    def importdata(
+        self, name, label, so: ImportObject
+    ):  # pylint: disable=too-many-return-statements
         storetemplate = {
             pkcs11.Attribute.TOKEN: True,
         }
         attrs = self._so_to_attr(so)
         data = base64.b64decode(so.data)
         attrs.update(storetemplate)
-        datatype, _, content = asn1crypto.pem.unarmor(data)
-        if datatype == 'CERTIFICATE':
-           attrs.update(pkcs11.util.x509.decode_x509_certificate(content))
-           return self._objtoobj(self.modules[name][label].create_object(attrs))
+        if so.pem:
+            datatype, _, content = asn1crypto.pem.unarmor(data)
+            if datatype == "CERTIFICATE":
+                attrs.update(pkcs11.util.x509.decode_x509_certificate(content))
+                return [self._objtoobj(self.modules[name][label].create_object(attrs))]
+            if datatype == "RSA PRIVATE KEY":
+                attrs.update(pkcs11.util.rsa.decode_rsa_private_key(content))
+                return [self._objtoobj(self.modules[name][label].create_object(attrs))]
+            if datatype == "EC PRIVATE KEY":
+                attrs.update(pkcs11.util.ec.decode_ec_private_key(content))
+                return [self._objtoobj(self.modules[name][label].create_object(attrs))]
+            if datatype == "PRIVATE KEY":  # 25519 or 448
+                attrs.update(
+                    {
+                        pkcs11.Attribute.KEY_TYPE: pkcs11.KeyType.EC_EDWARDS,
+                        pkcs11.Attribute.CLASS: pkcs11.ObjectClass.PRIVATE_KEY,
+                        pkcs11.Attribute.VALUE: asn1crypto.core.OctetString.load(
+                            asn1crypto.core.load(content)[2].native
+                        ).native,
+                        pkcs11.Attribute.EC_PARAMS: ECDomainParameters(
+                            {"named": asn1crypto.core.load(content)[1].native["0"]}
+                        ).dump(),
+                    }
+                )
+                return [self._objtoobj(self.modules[name][label].create_object(attrs))]
+            if datatype == "PUBLIC KEY":
+                # F*** ugly hack to fix asn1crypto outdated
+                tmpdisable = (
+                    asn1crypto.keys.PublicKeyInfo._spec_callbacks  # pylint: disable=protected-access
+                )
+                asn1crypto.keys.PublicKeyInfo._spec_callbacks = (  # pylint: disable=protected-access
+                    None
+                )
+                keytype = asn1crypto.keys.PublicKeyInfo.load(content).native[
+                    "algorithm"
+                ]["algorithm"]
+                asn1crypto.keys.PublicKeyInfo._spec_callbacks = (  # pylint: disable=protected-access
+                    tmpdisable
+                )
+                if keytype == "rsa":
+                    attrs.update(
+                        pkcs11.util.rsa.decode_rsa_public_key(
+                            asn1crypto.keys.PublicKeyInfo.load(content)[
+                                "public_key"
+                            ].native
+                        )
+                    )
+                    return [
+                        self._objtoobj(self.modules[name][label].create_object(attrs))
+                    ]
+                if keytype == "ec":
+                    attrs.update(pkcs11.util.ec.decode_ec_public_key(content))
+                    return [
+                        self._objtoobj(self.modules[name][label].create_object(attrs))
+                    ]
+                if keytype in ["ed25519", "x25519", "ed448", "x448"]:
+                    attrs.update(
+                        {
+                            pkcs11.Attribute.KEY_TYPE: pkcs11.KeyType.EC_EDWARDS,
+                            pkcs11.Attribute.CLASS: pkcs11.ObjectClass.PUBLIC_KEY,
+                            pkcs11.Attribute.EC_POINT: asn1crypto.core.load(content)[
+                                1
+                            ].dump(),
+                            pkcs11.Attribute.EC_PARAMS: ECDomainParameters(
+                                {"named": asn1crypto.core.load(content)[0].native["0"]}
+                            ).dump(),
+                        }
+                    )
+                    return [
+                        self._objtoobj(self.modules[name][label].create_object(attrs))
+                    ]
+            raise HSMError(f"Can't import {datatype}")
+        # TODO: AES import
+        raise HSMError("Raw import not supported yet")
 
     def wrap(self, name, label, so: SearchObject):
         return self._deencrypt("wrap", name, label, so)

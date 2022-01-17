@@ -77,4 +77,18 @@ def test(session, baseurl):
         finalcertpem = asn1crypto.pem.armor("CERTIFICATE", finalcert.dump())
         with open(f"tests/test-cert-ed-{method}.pem", "wb") as file:
             file.write(finalcertpem)
+        params = {
+            "label": "EDcert",
+            "pem": True,
+            "data": base64.b64encode(finalcertpem).decode(),
+        }
+        assert (
+            len(
+                session.post(baseurl + "/import", json=params).json()["objects"][
+                    "CHECK_VALUE"
+                ]
+            )
+            == 6
+        ), "ED certificate store error"
+
     return True

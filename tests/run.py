@@ -17,6 +17,7 @@ from tests import edsign
 from tests import rsacert
 from tests import eccert
 from tests import edcert
+from tests import importkeys
 
 BASE = "http://localhost:8000/hsm/"
 
@@ -79,16 +80,21 @@ start = time()
 assert edsign.test(s, baseurl), "ED sign and verify error"
 print("Time: ", time() - start)
 
-start = time()
-assert rsacert.test(s, baseurl), "RSA cert create error"
-print("Time: ", time() - start)
+if len(sys.argv) < 2:
+    start = time()
+    assert rsacert.test(s, baseurl), "RSA cert create error"
+    print("Time: ", time() - start)
+
+    start = time()
+    assert eccert.test(s, baseurl), "EC cert create error"
+    print("Time: ", time() - start)
+
+    start = time()
+    assert edcert.test(s, baseurl), "ED cert create error"
+    print("Time: ", time() - start)
 
 start = time()
-assert eccert.test(s, baseurl), "EC cert create error"
-print("Time: ", time() - start)
-
-start = time()
-assert edcert.test(s, baseurl), "ED cert create error"
+assert importkeys.test(s, baseurl), "Import keys error"
 print("Time: ", time() - start)
 
 print("All tests did not fail too obviously")
