@@ -80,7 +80,7 @@ start = time()
 assert edsign.test(s, baseurl), "ED sign and verify error"
 print("Time: ", time() - start)
 
-if len(sys.argv) < 0:
+if len(sys.argv) < 2:
     start = time()
     assert rsacert.test(s, baseurl), "RSA cert create error"
     print("Time: ", time() - start)

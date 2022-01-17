@@ -184,11 +184,10 @@ class HSMModule:  # pylint: disable=too-many-public-methods
         retobj = {}
         for attr in pkcs11.Attribute:
             try:
-                if str(attr).split(".")[1] in ["EC_PARAMS"]:
-                    retobj[str(attr).split(".")[1]] = ECDomainParameters.load(
-                        obj[attr]
-                    ).native
-                elif str(attr).split(".")[1] in [
+                attrname = str(attr).split(".")[1]
+                if attrname in ["EC_PARAMS"]:
+                    retobj[attrname] = ECDomainParameters.load(obj[attr]).native
+                elif attrname in [
                     "MODULUS",
                     "PUBLIC_EXPONENT",
                     "EC_POINT",
@@ -197,20 +196,16 @@ class HSMModule:  # pylint: disable=too-many-public-methods
                     "BASE",
                     "CHECK_VALUE",
                 ]:
-                    retobj[str(attr).split(".")[1]] = codecs.encode(obj[attr], "hex")
-                elif str(attr).split(".")[1] in [
+                    retobj[attrname] = codecs.encode(obj[attr], "hex")
+                elif attrname in [
                     "SUBJECT",
                     "ISSUER",
                 ]:
-                    retobj[str(attr).split(".")[1]] = (
-                        asn1crypto.x509.Name().load(obj[attr]).native
-                    )
-                elif str(attr).split(".")[1] in [
+                    retobj[attrname] = asn1crypto.x509.Name().load(obj[attr]).native
+                elif attrname in [
                     "SERIAL_NUMBER",
                 ]:
-                    retobj[str(attr).split(".")[1]] = (
-                        asn1crypto.core.Integer().load(obj[attr]).native
-                    )
+                    retobj[attrname] = asn1crypto.core.Integer().load(obj[attr]).native
                 else:
                     name, content = self._objtocontent(obj, attr)
                     if name:
@@ -280,9 +275,48 @@ class HSMModule:  # pylint: disable=too-many-public-methods
             return {"removed": 1}
         return {"removed": 0}
 
-    def importdata(
-        self, name, label, so: ImportObject
-    ):  # pylint: disable=too-many-return-statements
+    def _import_publickey(self, attrs, content):  # pylint: disable=no-self-use
+        # F*** ugly hack to fix asn1crypto outdated for edwards (25519,448)
+        tmpdisable = (
+            asn1crypto.keys.PublicKeyInfo._spec_callbacks  # pylint: disable=protected-access
+        )
+        asn1crypto.keys.PublicKeyInfo._spec_callbacks = (  # pylint: disable=protected-access
+            None
+        )
+        keytype = asn1crypto.keys.PublicKeyInfo.load(content).native["algorithm"][
+            "algorithm"
+        ]
+        asn1crypto.keys.PublicKeyInfo._spec_callbacks = (  # pylint: disable=protected-access
+            tmpdisable
+        )
+        # End hackje
+
+        if keytype == "rsa":
+            attrs.update(
+                pkcs11.util.rsa.decode_rsa_public_key(
+                    asn1crypto.keys.RSAPublicKey(
+                        asn1crypto.keys.PublicKeyInfo.load(content)["public_key"].native
+                    ).dump()
+                )
+            )
+        elif keytype == "ec":
+            attrs.update(pkcs11.util.ec.decode_ec_public_key(content))
+        elif keytype in ["ed25519", "x25519", "ed448", "x448"]:
+            attrs.update(
+                {
+                    pkcs11.Attribute.KEY_TYPE: pkcs11.KeyType.EC_EDWARDS,
+                    pkcs11.Attribute.CLASS: pkcs11.ObjectClass.PUBLIC_KEY,
+                    pkcs11.Attribute.EC_POINT: asn1crypto.core.load(content)[1].dump(),
+                    pkcs11.Attribute.EC_PARAMS: ECDomainParameters(
+                        {"named": asn1crypto.core.load(content)[0].native["0"]}
+                    ).dump(),
+                }
+            )
+        else:
+            raise HSMError(f"Can't import public key {keytype}")
+        return attrs
+
+    def importdata(self, name, label, so: ImportObject):
         storetemplate = {
             pkcs11.Attribute.TOKEN: True,
         }
@@ -293,14 +327,11 @@ class HSMModule:  # pylint: disable=too-many-public-methods
             datatype, _, content = asn1crypto.pem.unarmor(data)
             if datatype == "CERTIFICATE":
                 attrs.update(pkcs11.util.x509.decode_x509_certificate(content))
-                return [self._objtoobj(self.modules[name][label].create_object(attrs))]
-            if datatype == "RSA PRIVATE KEY":
+            elif datatype == "RSA PRIVATE KEY":
                 attrs.update(pkcs11.util.rsa.decode_rsa_private_key(content))
-                return [self._objtoobj(self.modules[name][label].create_object(attrs))]
-            if datatype == "EC PRIVATE KEY":
+            elif datatype == "EC PRIVATE KEY":
                 attrs.update(pkcs11.util.ec.decode_ec_private_key(content))
-                return [self._objtoobj(self.modules[name][label].create_object(attrs))]
-            if datatype == "PRIVATE KEY":  # 25519 or 448
+            elif datatype == "PRIVATE KEY":  # 25519 or 448
                 attrs.update(
                     {
                         pkcs11.Attribute.KEY_TYPE: pkcs11.KeyType.EC_EDWARDS,
@@ -313,56 +344,12 @@ class HSMModule:  # pylint: disable=too-many-public-methods
                         ).dump(),
                     }
                 )
-                return [self._objtoobj(self.modules[name][label].create_object(attrs))]
-            if datatype == "PUBLIC KEY":
-                # F*** ugly hack to fix asn1crypto outdated
-                tmpdisable = (
-                    asn1crypto.keys.PublicKeyInfo._spec_callbacks  # pylint: disable=protected-access
-                )
-                asn1crypto.keys.PublicKeyInfo._spec_callbacks = (  # pylint: disable=protected-access
-                    None
-                )
-                keytype = asn1crypto.keys.PublicKeyInfo.load(content).native[
-                    "algorithm"
-                ]["algorithm"]
-                asn1crypto.keys.PublicKeyInfo._spec_callbacks = (  # pylint: disable=protected-access
-                    tmpdisable
-                )
-                if keytype == "rsa":
-                    attrs.update(
-                        pkcs11.util.rsa.decode_rsa_public_key(
-                            asn1crypto.keys.RSAPublicKey(
-                                asn1crypto.keys.PublicKeyInfo.load(content)[
-                                    "public_key"
-                                ].native
-                            ).dump()
-                        )
-                    )
-                    return [
-                        self._objtoobj(self.modules[name][label].create_object(attrs))
-                    ]
-                if keytype == "ec":
-                    attrs.update(pkcs11.util.ec.decode_ec_public_key(content))
-                    return [
-                        self._objtoobj(self.modules[name][label].create_object(attrs))
-                    ]
-                if keytype in ["ed25519", "x25519", "ed448", "x448"]:
-                    attrs.update(
-                        {
-                            pkcs11.Attribute.KEY_TYPE: pkcs11.KeyType.EC_EDWARDS,
-                            pkcs11.Attribute.CLASS: pkcs11.ObjectClass.PUBLIC_KEY,
-                            pkcs11.Attribute.EC_POINT: asn1crypto.core.load(content)[
-                                1
-                            ].dump(),
-                            pkcs11.Attribute.EC_PARAMS: ECDomainParameters(
-                                {"named": asn1crypto.core.load(content)[0].native["0"]}
-                            ).dump(),
-                        }
-                    )
-                    return [
-                        self._objtoobj(self.modules[name][label].create_object(attrs))
-                    ]
-            raise HSMError(f"Can't import {datatype}")
+            elif datatype == "PUBLIC KEY":
+                attrs = self._import_publickey(attrs, content)
+            else:
+                raise HSMError(f"Can't import {datatype}")
+        if pkcs11.Attribute.CLASS in attrs:
+            return [self._objtoobj(self.modules[name][label].create_object(attrs))]
         # TODO: AES import
         raise HSMError("Raw import not supported yet")
 
@@ -645,6 +632,7 @@ class HSMModule:  # pylint: disable=too-many-public-methods
     def list_slot_mech(self, name, label):
         try:
             return [
+                # example: Mechanism.AES_CBC => AES_CBC
                 str(x).split(".")[1] if "." in str(x) else "mechtype-" + hex(x)
                 for x in self.modules[name][label].token.slot.get_mechanisms()
             ]
