@@ -27,6 +27,7 @@ from .modules.model import (
     SignRSAObject,
     SignAESObject,
     ImportObject,
+    WrapAESObject,
 )
 
 with open("conf.yml", "r", encoding="utf-8") as yamlfile:
@@ -221,13 +222,13 @@ async def verify(
 
 
 @app.post("/hsm/{module}/{slot}/wrap", tags=["Key usage"])
-async def wrap(module: Modules, slot: Slots, so: SearchObject):
+async def wrap(module: Modules, slot: Slots, so: WrapAESObject):
     doesexist(module, slot)
     return {"module": module, "slot": slot, "result": hsm.wrap(module, slot, so)}
 
 
 @app.post("/hsm/{module}/{slot}/unwrap", tags=["Key usage"])
-async def unwrap(module: Modules, slot: Slots, so: SearchObject):
+async def unwrap(module: Modules, slot: Slots, so: WrapAESObject):
     doesexist(module, slot)
     return {"module": module, "slot": slot, "result": hsm.unwrap(module, slot, so)}
 

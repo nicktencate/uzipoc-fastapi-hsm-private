@@ -112,6 +112,11 @@ class SignAESObject(SignObject):  # pylint: disable=too-few-public-methods
     pass
 
 
+class WrapAESObject(SignObject):  # pylint: disable=too-few-public-methods
+    data: str = None
+    mechanism: Optional[str] = None
+
+
 class RSAAESGenParam(BaseModel):  # pylint: disable=too-few-public-methods
     label: Optional[str] = None
     objid: Optional[str] = None
