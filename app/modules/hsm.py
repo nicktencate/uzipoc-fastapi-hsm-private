@@ -489,7 +489,9 @@ class HSMModule:  # pylint: disable=too-many-public-methods
             if thefunc == "verify":
                 return toexec(
                     data,
-                    pkcs11.util.ec.decode_ecdsa_signature(base64.b64decode(so.signature)),
+                    pkcs11.util.ec.decode_ecdsa_signature(
+                        base64.b64decode(so.signature)
+                    ),
                     mechanism=getattr(pkcs11.Mechanism, so.mechanism),
                     mechanism_param=mechanism_param,
                 )
