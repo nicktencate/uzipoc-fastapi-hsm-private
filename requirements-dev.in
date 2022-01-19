@@ -8,3 +8,4 @@ types-orjson
 types-PyYAML
 requests
 pycrypto
+pytest
