@@ -34,7 +34,7 @@ def test(session, baseurl):  # pylint: disable=too-many-locals
         print(f"Creating rsa cert with: {method}")
         signature_alg = {"algorithm": method}
         newcertcontent = tests.certgen.certgen(
-            "rsatestcert", asn1publickey, signature_alg
+            f"rsatestcert-{method}", asn1publickey, signature_alg
         )
         tbscert = asn1crypto.x509.TbsCertificate(newcertcontent)
 

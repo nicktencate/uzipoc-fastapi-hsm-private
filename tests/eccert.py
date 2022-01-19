@@ -24,7 +24,7 @@ def test(session, baseurl):
         signature_alg = {"algorithm": method}
 
         newcertcontent = tests.certgen.certgen(
-            "ectestcert", asn1publickey, signature_alg
+            f"ectestcert-{method}", asn1publickey, signature_alg
         )
         tbscert = asn1crypto.x509.TbsCertificate(newcertcontent)
 

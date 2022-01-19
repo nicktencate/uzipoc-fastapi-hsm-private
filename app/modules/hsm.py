@@ -170,12 +170,13 @@ class HSMModule:  # pylint: disable=too-many-public-methods
 
     def _objtocontent(self, obj, want):  # pylint: disable=no-self-use
         try:
+            attrname = str(want).split(".")[1]
             if obj[want] and isinstance(obj[want], bytes):
-                return str(want).split(".")[1], obj[want].decode("utf-8")
+                return attrname, obj[want].decode("utf-8")
             if obj[want] is not None and "." in str(obj[want]):
-                return str(want).split(".")[1], str(obj[want]).split(".")[1]
+                return attrname, str(obj[want]).split(".")[1]
             if obj[want]:
-                return str(want).split(".")[1], obj[want]
+                return attrname, obj[want]
             return False, None
         except:  # pylint: disable=bare-except
             return False, None
@@ -210,7 +211,7 @@ class HSMModule:  # pylint: disable=too-many-public-methods
                     name, content = self._objtocontent(obj, attr)
                     if name:
                         retobj[name] = content
-            except:  # pylint: disable=bare-except
+            except Exception as e:  # pylint: disable=bare-except
                 pass
         try:
             if obj.key_type == pkcs11.KeyType.RSA:
@@ -488,9 +489,19 @@ class HSMModule:  # pylint: disable=too-many-public-methods
             if thefunc == "verify":
                 return toexec(
                     data,
-                    base64.b64decode(so.signature),
+                    pkcs11.util.ec.decode_ecdsa_signature(base64.b64decode(so.signature)),
                     mechanism=getattr(pkcs11.Mechanism, so.mechanism),
                     mechanism_param=mechanism_param,
+                )
+            if thefunc == "sign":
+                return base64.b64encode(
+                    pkcs11.util.ec.encode_ecdsa_signature(
+                        toexec(
+                            data,
+                            mechanism=getattr(pkcs11.Mechanism, so.mechanism),
+                            mechanism_param=mechanism_param,
+                        )
+                    )
                 )
             return base64.b64encode(
                 toexec(
@@ -641,28 +652,30 @@ class HSMModule:  # pylint: disable=too-many-public-methods
 
     def list_slot(self, name, label):
         usage_attr = [
-            Attribute.ENCRYPT,
-            Attribute.WRAP,
-            Attribute.VERIFY,
-            Attribute.DERIVE,
-            Attribute.DECRYPT,
-            Attribute.UNWRAP,
-            Attribute.SIGN,
+            "ENCRYPT",
+            "WRAP",
+            "VERIFY",
+            "DERIVE",
+            "DECRYPT",
+            "UNWRAP",
+            "SIGN",
         ]
         flags_attr = [
-            Attribute.NEVER_EXTRACTABLE,
-            Attribute.ALWAYS_SENSITIVE,
-            Attribute.MODIFIABLE,
-            Attribute.COPYABLE,
-            Attribute.EXTRACTABLE,
-            Attribute.PRIVATE,
+            "NEVER_EXTRACTABLE",
+            "ALWAYS_SENSITIVE",
+            "MODIFIABLE",
+            "COPYABLE",
+            "EXTRACTABLE",
+            "PRIVATE",
         ]
         wanted_attr = [
-            Attribute.LABEL,
-            Attribute.KEY_TYPE,
-            Attribute.SUBJECT,
-            Attribute.ID,
-            Attribute.MODULUS_BITS,
+            "LABEL",
+            "KEY_TYPE",
+            "SUBJECT",
+            "ISSUER",
+            "SERIAL_NUMBER",
+            "ID",
+            "MODULUS_BITS",
         ]
         objs: dict = {}
         for obj in self.modules[name][label].get_objects():
@@ -674,17 +687,15 @@ class HSMModule:  # pylint: disable=too-many-public-methods
             if objtype not in objs:
                 objs[objtype] = []
             retobj: dict = {"flags": [], "usage": []}
+            dingen = self._objtoobj(obj)
             for want in wanted_attr:
-                name, content = self._objtocontent(obj, want)
-                if name:
-                    retobj[name] = content
+                if want in dingen:
+                    retobj[want] = dingen[want]
             for want in flags_attr:
-                name, content = self._objtocontent(obj, want)
-                if name and content:
-                    retobj["flags"].append(name)
+                if want in dingen and dingen[want]:
+                    retobj["flags"].append(want)
             for want in usage_attr:
-                name, content = self._objtocontent(obj, want)
-                if name and content:
-                    retobj["usage"].append(name)
+                if want in dingen and dingen[want]:
+                    retobj["usage"].append(want)
             objs[objtype].append(retobj)
         return objs
