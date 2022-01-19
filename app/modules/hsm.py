@@ -211,7 +211,7 @@ class HSMModule:  # pylint: disable=too-many-public-methods
                     name, content = self._objtocontent(obj, attr)
                     if name:
                         retobj[name] = content
-            except Exception as e:  # pylint: disable=bare-except
+            except:  # pylint: disable=bare-except
                 pass
         try:
             if obj.key_type == pkcs11.KeyType.RSA:
@@ -697,5 +697,6 @@ class HSMModule:  # pylint: disable=too-many-public-methods
             for want in usage_attr:
                 if want in dingen and dingen[want]:
                     retobj["usage"].append(want)
+
             objs[objtype].append(retobj)
         return objs
