@@ -3,6 +3,7 @@
 This file contains the API setup to communicate with the configured HSM,
 defined using the FastAPI library.
 """
+import sys
 from typing import Union
 from urllib.request import Request
 
@@ -17,6 +18,7 @@ from .modules.model import (
     HSMError,
     SearchObject,
     RSAGenParam,
+    DSAGenParam,
     AESGenParam,
     ECGenParam,
     DecryptEncryptObject,
@@ -24,6 +26,7 @@ from .modules.model import (
     VerifyAESObject,
     SignRSAObject,
     SignAESObject,
+    ImportObject,
 )
 
 with open("conf.yml", "r", encoding="utf-8") as yamlfile:
@@ -60,6 +63,10 @@ tags_metadata = [
     {
         "name": "Key generation",
         "description": "Generate new keys: Elliptic Curves, RSA, AES",
+    },
+    {
+        "name": "Object removal",
+        "description": "Remove an object",
     },
     {
         "name": "Key usage",
@@ -152,6 +159,12 @@ async def genrsa(module: Modules, slot: Slots, rsagen: RSAGenParam):
     return {"module": module, "slot": slot, "result": hsm.gen_rsa(module, slot, rsagen)}
 
 
+@app.post("/hsm/{module}/{slot}/generate/dsa", tags=["Key generation"])
+async def gendsa(module: Modules, slot: Slots, dsagen: DSAGenParam):
+    doesexist(module, slot)
+    return {"module": module, "slot": slot, "result": hsm.gen_dsa(module, slot, dsagen)}
+
+
 @app.post("/hsm/{module}/{slot}/generate/aes", tags=["Key generation"])
 async def genaes(module: Modules, slot: Slots, aesgen: AESGenParam):
     doesexist(module, slot)
@@ -165,7 +178,7 @@ async def genec(module: Modules, slot: Slots, ecgen: ECGenParam):
     return {"module": module, "slot": slot, "result": hsm.gen_ec(module, slot, ecgen)}
 
 
-@app.post("/hsm/{module}/{slot}/generate/ec", tags=["Key generation"])
+@app.post("/hsm/{module}/{slot}/generate/edwards", tags=["Key generation"])
 async def genedwards(module: Modules, slot: Slots, ecgen: ECGenParam):
     doesexist(module, slot)
     return {
@@ -175,7 +188,7 @@ async def genedwards(module: Modules, slot: Slots, ecgen: ECGenParam):
     }
 
 
-@app.post("/hsm/{module}/{slot}/destroy", tags=["Key usage"])
+@app.post("/hsm/{module}/{slot}/destroy", tags=["Object removal"])
 async def destroyobj(module: Modules, slot: Slots, so: SearchObject):
     doesexist(module, slot)
     return {"module": module, "slot": slot, "result": hsm.destroyobj(module, slot, so)}
@@ -217,6 +230,21 @@ async def wrap(module: Modules, slot: Slots, so: SearchObject):
 async def unwrap(module: Modules, slot: Slots, so: SearchObject):
     doesexist(module, slot)
     return {"module": module, "slot": slot, "result": hsm.unwrap(module, slot, so)}
+
+
+@app.post("/hsm/{module}/{slot}/import", tags=["Import"])
+async def importdata(module: Modules, slot: Slots, so: ImportObject):
+    doesexist(module, slot)
+    return {
+        "module": module,
+        "slot": slot,
+        "objects": hsm.importdata(module, slot, so),
+    }
+
+
+@app.get("/stopandexit", tags=["Development only"])
+async def stopandexit():
+    sys.exit()
 
 
 # import pkcs11

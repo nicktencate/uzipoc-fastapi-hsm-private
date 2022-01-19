@@ -1,0 +1,11 @@
+modules:
+  - name: softhsm
+    module: MODULE_PATH
+    slots: 
+    - slot: SoftHSMLabel
+      pinfile: secrets/someslot-000.pin
+
+ca:
+  ca: clients/ca.pem
+  crl: clients/crl.pem
+

@@ -17,17 +17,29 @@ pip-sync-dev: ## synchronizes the .venv with the state of requirements.txt
 	. .venv/bin/activate && ${env} python3 -m piptools sync requirements.txt requirements-dev.txt
 
 lint: venv  ## Do basic linting
-	@. .venv/bin/activate && ${env} python3 -m pylint app 
-	@. .venv/bin/activate && ${env} python3 -m black --check app 
+	@. .venv/bin/activate && ${env} python3 -m pylint app tests
+	@. .venv/bin/activate && ${env} python3 -m black --check app tests
 
 check-types: venv ## Check for type issues with mypy
-	@. .venv/bin/activate && ${env} python3 -m mypy --check app
+	@. .venv/bin/activate && ${env} python3 -m mypy --check app tests
 
 fix:
-	@. .venv/bin/activate && ${env} python3 -m black app 
+	@. .venv/bin/activate && ${env} python3 -m black app tests
 
 run:
 	. .venv/bin/activate && ${env} python3 -m hypercorn app.main:app --reload -b 0
+testrun:
+	bash ./bootstrap.sh
+	SOFTHSM2_CONF=./softhsm2.conf . .venv/bin/activate && ${env} python3 -m hypercorn app.main:app --reload -b 0
+
+runtest:
+	./tests/genopensslkeys.sh
+	. .venv/bin/activate && ${env} python3 -m tests.run
+	@for cert in tests/test-cert-*.pem;do openssl verify -CAfile $$cert $$cert;done
+
+runtest-dev:
+	. .venv/bin/activate && ${env} python3 -m tests.run dev
+	@for cert in tests/test-cert-*.pem;do openssl verify -CAfile $$cert $$cert;done
 
 .bootstrap:
 	bash ./bootstrap.sh
