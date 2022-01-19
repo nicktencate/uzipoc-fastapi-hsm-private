@@ -32,8 +32,8 @@ def test(session, baseurl):
     certs = []
     for certfile in [
         #        "tests/test-cert-ec-sha256_ecdsa.pem",
-        "tests/test-leafcert-rsa-sha256_rsa.pem",
-#        "tests/test-leaf-cert-ec-sha512_ecdsa.pem",
+#        "tests/test-leafcert-rsa-sha256_rsa.pem",
+        "tests/test-leaf-cert-ec-sha512_ecdsa.pem",
     ]:
         with open(certfile, "rb") as file:
             der = asn1crypto.pem.unarmor(file.read())[2]
