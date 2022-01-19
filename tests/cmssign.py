@@ -25,14 +25,15 @@ asn1crypto.algos.EncryptionAlgorithm._oid_specs["rc2"] = asn1crypto.core.Integer
 
 
 def test(session, baseurl):
-    message = b"Hallow wereld\n"
+    message = b"Content-Type: text/plain\r\n\r\nHallow wereld\r\n"
     sd = asn1crypto.cms.SignedData()
     hashalgo = "sha256"
     digestalgo = {"algorithm": hashalgo}
     certs = []
     for certfile in [
         #        "tests/test-cert-ec-sha256_ecdsa.pem",
-        "tests/test-cert-rsa-sha256_rsa.pem",
+        "tests/test-leafcert-rsa-sha256_rsa.pem",
+#        "tests/test-leaf-cert-ec-sha512_ecdsa.pem",
     ]:
         with open(certfile, "rb") as file:
             der = asn1crypto.pem.unarmor(file.read())[2]
@@ -41,7 +42,7 @@ def test(session, baseurl):
     # en dan ook de chain voor de certificaten
     signdata = {
         "version": "v1",
-        "encap_content_info": {"content_type": "data", "content": None},
+        "encap_content_info": {"content_type": "data", "content": message},
         "digest_algorithms": [{"algorithm": hashalgo}],
         "certificates": certs,
         "crls": None,
@@ -78,7 +79,6 @@ def test(session, baseurl):
             ),
         ]
         signed_attrs = asn1crypto.cms.CMSAttributes(signed_attrs)
-        print(signed_attrs)
         thehash = getattr(hashlib, hashalgo)(signed_attrs.dump()).digest()
         # sign thehash to thesignature
         if signtype == "ecdsa":
@@ -88,7 +88,6 @@ def test(session, baseurl):
                 "data": b64encode(thehash).decode(),
                 "mechanism": "ECDSA",
             }
-            print(session.post(baseurl + "/sign", json=params).text)
             signature = b64decode(
                 session.post(baseurl + "/sign", json=params).json()["result"]
             )

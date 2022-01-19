@@ -31,10 +31,10 @@ def test(session, baseurl):  # pylint: disable=too-many-locals
         "sha384_rsa",
         "sha512_rsa",
     ]:
-        print(f"Creating rsa cert with: {method}")
+        print(f"Creating rootrsa cert with: {method}")
         signature_alg = {"algorithm": method}
         newcertcontent = tests.certgen.certgen(
-            f"rsatestcert-{method}", asn1publickey, signature_alg
+            f"rsaroottestcert-{method}", asn1publickey, signature_alg
         )
         tbscert = asn1crypto.x509.TbsCertificate(newcertcontent)
 
@@ -65,10 +65,10 @@ def test(session, baseurl):  # pylint: disable=too-many-locals
         finalcert = asn1crypto.x509.Certificate(signedcertparams)
 
         finalcertpem = asn1crypto.pem.armor("CERTIFICATE", finalcert.dump())
-        with open(f"tests/test-cert-rsa-{method}.pem", "wb") as file:
+        with open(f"tests/test-rootcert-rsa-{method}.pem", "wb") as file:
             file.write(finalcertpem)
         params = {
-            "label": "RSAcert",
+            "label": "RSArootcert-{method}",
             "pem": True,
             "data": base64.b64encode(finalcertpem).decode(),
         }
@@ -80,5 +80,55 @@ def test(session, baseurl):  # pylint: disable=too-many-locals
             )
             == 6
         ), "ED certificate store error"
+
+        print(f"Creating leafrsa cert with: {method}")
+        signature_alg = {"algorithm": method}
+        newcertcontent = tests.certgen.certgen(
+            f"rsaleaftestcert-{method}", asn1publickey, signature_alg, finalcert
+        )
+        tbscert = asn1crypto.x509.TbsCertificate(newcertcontent)
+
+        hashmethod = signature_alg["algorithm"][: signature_alg["algorithm"].index("_")]
+
+        hashasn1 = asn1crypto.tsp.MessageImprint(
+            {
+                "hash_algorithm": {"algorithm": hashmethod},
+                "hashed_message": getattr(hashlib, hashmethod)(tbscert.dump()).digest(),
+            }
+        )
+        params = {
+            "label": "RSAkey",
+            "objtype": "PRIVATE_KEY",
+            "data": base64.b64encode(hashasn1.dump()).decode(),
+            "mechanism": "RSA_PKCS",
+            "hashmethod": hashmethod,
+        }
+        signature = base64.b64decode(
+            session.post(baseurl + "/sign", json=params).json()["result"]
+        )
+
+        signedcertparams = {
+            "tbs_certificate": tbscert,
+            "signature_algorithm": signature_alg,
+            "signature_value": signature,
+        }
+        finalcert = asn1crypto.x509.Certificate(signedcertparams)
+
+        finalcertpem = asn1crypto.pem.armor("CERTIFICATE", finalcert.dump())
+        with open(f"tests/test-leafcert-rsa-{method}.pem", "wb") as file:
+            file.write(finalcertpem)
+        params = {
+            "label": "RSAleafcert-{method}",
+            "pem": True,
+            "data": base64.b64encode(finalcertpem).decode(),
+        }
+        assert (
+            len(
+                session.post(baseurl + "/import", json=params).json()["objects"][0][
+                    "CHECK_VALUE"
+                ]
+            )
+            == 6
+        ), "RSA certificate store error"
 
     return True
