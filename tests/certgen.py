@@ -62,7 +62,7 @@ def certgen(name, asn1publickey, signature_alg, rootcert=False):
                 "extn_id": "basic_constraints",
                 "critical": True,
                 "extn_value": {
-                    "ca": True,
+                    "ca": not rootcert,
                     "path_len_constraint": None,
                 },
             },

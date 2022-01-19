@@ -8,32 +8,18 @@ import asn1crypto.pem
 import asn1crypto.core
 import asn1crypto.algos
 
-asn1crypto.cms.CMSAttributeType._map["1.2.840.113549.1.9.15"] = "smimeCapabilities"
+from tests.asn1patches import SMIMECapability, SMIMECapabilities
 
 
-class SMIMECapability(asn1crypto.core.SequenceOf):
-    _child_spec = asn1crypto.algos.EncryptionAlgorithm
-
-
-class SMIMECapabilities(asn1crypto.core.SetOf):
-    _child_spec = SMIMECapability
-
-
-asn1crypto.cms.CMSAttribute._oid_specs["smimeCapabilities"] = SMIMECapabilities
-
-asn1crypto.algos.EncryptionAlgorithm._oid_specs["rc2"] = asn1crypto.core.Integer
-
-
-def test(session, baseurl):
+def test(session, baseurl):  # pylint: disable = too-many-locals
     message = b"Content-Type: text/plain\r\n\r\nHallow wereld\r\n"
     sd = asn1crypto.cms.SignedData()
     hashalgo = "sha256"
     digestalgo = {"algorithm": hashalgo}
     certs = []
     for certfile in [
-        #        "tests/test-cert-ec-sha256_ecdsa.pem",
-        #        "tests/test-leafcert-rsa-sha256_rsa.pem",
         "tests/test-leaf-cert-ec-sha512_ecdsa.pem",
+        # "tests/test-leafcert-rsa-sha256_rsa.pem",
     ]:
         with open(certfile, "rb") as file:
             der = asn1crypto.pem.unarmor(file.read())[2]
@@ -61,7 +47,7 @@ def test(session, baseurl):
             SMIMECapability(
                 [
                     {"algorithm": algo}
-                    for algo in asn1crypto.algos.EncryptionAlgorithm._oid_specs
+                    for algo in asn1crypto.algos.EncryptionAlgorithm._oid_specs  # pylint: disable=protected-access
                     if algo.startswith("aes") and algo.endswith("_cbc")
                 ]
             )
@@ -132,7 +118,8 @@ def test(session, baseurl):
             "content": sd,
         }
     )
-    print(asn1crypto.pem.armor("CMS", asn1obj.dump()).decode())
+    with open("tests/signed.cms.pem", "wb") as file:
+        file.write(asn1crypto.pem.armor("CMS", asn1obj.dump()))
 
 
 if __name__ == "__main__":

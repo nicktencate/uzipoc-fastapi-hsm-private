@@ -6,33 +6,7 @@ import asn1crypto.keys
 import asn1crypto.algos
 
 import tests.certgen
-
-# default asn1crypto does not know about. development on github version knows
-asn1crypto.keys.PublicKeyAlgorithmId._map[  # pylint: disable=protected-access
-    "1.3.101.110"
-] = "x25519"
-asn1crypto.keys.PublicKeyAlgorithmId._map[  # pylint: disable=protected-access
-    "1.3.101.111"
-] = "x448"
-asn1crypto.keys.PublicKeyAlgorithmId._map[  # pylint: disable=protected-access
-    "1.3.101.112"
-] = "ed25519"
-asn1crypto.keys.PublicKeyAlgorithmId._map[  # pylint: disable=protected-access
-    "1.3.101.113"
-] = "ed448"
-asn1crypto.algos.SignedDigestAlgorithmId._map[  # pylint: disable=protected-access
-    "1.3.101.112"
-] = "ed25519"
-asn1crypto.algos.SignedDigestAlgorithmId._map[  # pylint: disable=protected-access
-    "1.3.101.113"
-] = "ed448"
-asn1crypto.algos.SignedDigestAlgorithmId._reverse_map[  # pylint: disable=protected-access
-    "ed25519"
-] = "1.3.101.112"
-asn1crypto.algos.SignedDigestAlgorithmId._reverse_map[  # pylint: disable=protected-access
-    "ed448"
-] = "1.3.101.113"
-asn1crypto.keys.PublicKeyInfo._spec_callbacks = None  # pylint: disable=protected-access
+import tests.asn1patches
 
 
 def test(session, baseurl):

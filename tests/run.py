@@ -11,6 +11,7 @@ from tests import genaes
 
 from tests import rsaendecrypt
 from tests import aesendecrypt
+from tests import aeswrap
 from tests import rsasign
 from tests import ecsign
 from tests import edsign
@@ -66,6 +67,10 @@ print("Time: ", time() - start)
 
 start = time()
 assert aesendecrypt.test(s, baseurl), "AES encrypt and decrypt error"
+print("Time: ", time() - start)
+
+start = time()
+assert aeswrap.test(s, baseurl), "AES wrap and unwrap error"
 print("Time: ", time() - start)
 
 start = time()

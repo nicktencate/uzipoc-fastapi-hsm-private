@@ -124,6 +124,10 @@ class MethodSize:  # pylint: disable=too-few-public-methods
 class HSMModule:  # pylint: disable=too-many-public-methods
     modules = {}
     libs = {}
+    publictemplate = {
+        pkcs11.Attribute.SENSITIVE: False,
+        pkcs11.Attribute.EXTRACTABLE: True,
+    }
 
     def __init__(self, config):
         for module in config["modules"]:
@@ -355,10 +359,10 @@ class HSMModule:  # pylint: disable=too-many-public-methods
         raise HSMError("Raw import not supported yet")
 
     def wrap(self, name, label, so: SearchObject):
-        return self._deencrypt("wrap", name, label, so)
+        return self._deencrypt("wrap_key", name, label, so)
 
     def unwrap(self, name, label, so: SearchObject):
-        return self._deencrypt("unwrap", name, label, so)
+        return self._deencrypt("unwrap_key", name, label, so)
 
     def sign(self, name, label, so: SearchObject):
         return self._deencrypt("sign", name, label, so)
@@ -406,15 +410,9 @@ class HSMModule:  # pylint: disable=too-many-public-methods
     #   data: ""
     #   size: aantal returned bits
     #   algorithm: optioneel: SHA256 ofzoiets
-    def _derive_key(
-        self, so: SearchObject, toexec, data: bytes
-    ):  # pylint: disable=no-self-use
+    def _derive_key(self, so: SearchObject, toexec, data: bytes):
         # this seems counter intiutive, however if you want to return an AES key it should be extractable after
         # calculation
-        publictemplate = {
-            pkcs11.Attribute.SENSITIVE: False,
-            pkcs11.Attribute.EXTRACTABLE: True,
-        }
         otherpub = base64.b64decode(so.otherpub)
         sharedinfo = so.sharedinfo if hasattr(so, "sharedinfo") else None
         thekdf = (
@@ -446,7 +444,7 @@ class HSMModule:  # pylint: disable=too-many-public-methods
                     pkcs11.ObjectClass.SECRET_KEY,
                     pkcs11.KeyType.AES,
                     data,
-                    template=publictemplate,
+                    template=self.publictemplate,
                 )["pkcs11.Attribute.VALUE"]
             )
         if hasattr(so, "size"):
@@ -455,7 +453,7 @@ class HSMModule:  # pylint: disable=too-many-public-methods
                     pkcs11.KeyType.AES,
                     so.size,
                     mechanism_param=(thekdf, sharedinfo, otherpub),
-                    template=publictemplate,
+                    template=self.publictemplate,
                 )["pkcs11.Attribute.VALUE"]
             )
         return False
@@ -558,37 +556,54 @@ class HSMModule:  # pylint: disable=too-many-public-methods
 
     def _aes(
         self, so: SearchObject, toexec, data: bytes, thefunc: str, module
-    ):  # pylint: disable=no-self-use, too-many-arguments
+    ):  # pylint: disable=too-many-arguments
         theiv = (
             base64.b64decode(so.iv)
             if hasattr(so, "iv") and so.iv
             else module.generate_random(128)
         )
+        mechanism = None
+        mechanism_param = None
         if so.mechanism:
             if thefunc == "verify":
-                return toexec(
-                    data,
-                    base64.b64decode(so.signature),
-                    mechanism_param=theiv,
-                    mechanism=getattr(pkcs11.Mechanism, so.mechanism),
-                )
+                mechanism_param = theiv
+                mechanism = getattr(pkcs11.Mechanism, so.mechanism)
+
+        if thefunc == "verify":
+            retdata = toexec(
+                data, base64.b64decode(so.signature), mechanism_param=theiv
+            )
+        elif thefunc == "wrap_key":
+            attrs = {
+                pkcs11.Attribute.KEY_TYPE: pkcs11.KeyType.AES,
+                pkcs11.Attribute.CLASS: pkcs11.ObjectClass.SECRET_KEY,
+                pkcs11.Attribute.VALUE: data,
+            }
+            attrs.update(self.publictemplate)
             retdata = base64.b64encode(
                 toexec(
-                    data,
-                    mechanism_param=theiv,
-                    mechanism=getattr(pkcs11.Mechanism, so.mechanism),
+                    module.create_object(attrs),
+                    mechanism=mechanism,
+                    mechanism_param=mechanism_param,
                 )
             )
-        elif thefunc == "verify":
-            return toexec(data, base64.b64decode(so.signature), mechanism_param=theiv)
-        retdata = base64.b64encode(toexec(data, mechanism_param=theiv))
+        elif thefunc == "unwrap_key":
+            retdata = base64.b64encode(
+                toexec(
+                    pkcs11.ObjectClass.SECRET_KEY,
+                    pkcs11.KeyType.AES,
+                    data,
+                    mechanism=mechanism,
+                    template=self.publictemplate,
+                )[pkcs11.Attribute.VALUE]
+            )
+        else:
+            retdata = base64.b64encode(
+                toexec(data, mechanism_param=theiv, mechanism=mechanism)
+            )
         if thefunc == "encrypt":
             return {"iv": base64.b64encode(theiv), "data": retdata}
-        if thefunc == "decrypt":
-            return {"data": retdata}
-        if thefunc == "verify":
-            return {"data": retdata}
-        return False
+        return retdata if isinstance(retdata, bool) else {"data": retdata}
 
     def _deencrypt(
         self, thefunc: str, name: str, label: str, so: SearchObject
