@@ -15,21 +15,23 @@ def certgen(name, asn1publickey, signature_alg, rootcert=False):
     )
     subject = asn1crypto.x509.Name.build({"common_name": name})
     if rootcert:
-      rootkey_tohash = (
-          rootcert["tbs_certificate"]['subject_public_key_info'].dump()
-          if asn1publickey["algorithm"]["algorithm"].native == "rsa"
-          else rootcert["tbs_certificate"]['subject_public_key_info']["public_key"].native
-      )
-      authki = hashlib.sha1(rootkey_tohash).digest()
-      authci = None
-      authsn = rootcert["tbs_certificate"]["serial_number"]
-      issuer = rootcert["tbs_certificate"]["subject"]
+        rootkey_tohash = (
+            rootcert["tbs_certificate"]["subject_public_key_info"].dump()
+            if asn1publickey["algorithm"]["algorithm"].native == "rsa"
+            else rootcert["tbs_certificate"]["subject_public_key_info"][
+                "public_key"
+            ].native
+        )
+        authki = hashlib.sha1(rootkey_tohash).digest()
+        authci = None
+        authsn = rootcert["tbs_certificate"]["serial_number"]
+        issuer = rootcert["tbs_certificate"]["subject"]
     else:
-      rootkey_tohash = publickey_tohash
-      authki = hashlib.sha1(publickey_tohash).digest()
-      authci = None
-      authsn = None
-      issuer = subject
+        rootkey_tohash = publickey_tohash
+        authki = hashlib.sha1(publickey_tohash).digest()
+        authci = None
+        authsn = None
+        issuer = subject
     newcertcontent = {
         "version": "v3",
         "serial_number": random.randint(a=2 ** 64, b=2 ** 65 - 1),
@@ -60,7 +62,7 @@ def certgen(name, asn1publickey, signature_alg, rootcert=False):
                 "extn_id": "basic_constraints",
                 "critical": True,
                 "extn_value": {
-                    "ca": True,
+                    "ca": not rootcert,
                     "path_len_constraint": None,
                 },
             },

@@ -17,7 +17,7 @@ def test(session, baseurl):
         "mechanism": "ECDSA",
     }
     signature = session.post(baseurl + "/sign", json=params).json()["result"]
-    assert len(b64decode(signature)) >  64, "Length error EC sign"
+    assert len(b64decode(signature)) > 64, "Length error EC sign"
 
     print("Testing EC verify: default")
     params = {

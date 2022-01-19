@@ -65,10 +65,10 @@ def test(session, baseurl):  # pylint: disable=too-many-locals
         finalcert = asn1crypto.x509.Certificate(signedcertparams)
 
         finalcertpem = asn1crypto.pem.armor("CERTIFICATE", finalcert.dump())
-        with open(f"tests/test-rootcert-rsa-{method}.pem", "wb") as file:
+        with open(f"tests/test-root-cert-rsa-{method}.pem", "wb") as file:
             file.write(finalcertpem)
         params = {
-            "label": "RSArootcert-{method}",
+            "label": "RSAroot-cert-{method}",
             "pem": True,
             "data": base64.b64encode(finalcertpem).decode(),
         }
@@ -81,10 +81,10 @@ def test(session, baseurl):  # pylint: disable=too-many-locals
             == 6
         ), "ED certificate store error"
 
-        print(f"Creating leafrsa cert with: {method}")
+        print(f"Creating leaf-rsa cert with: {method}")
         signature_alg = {"algorithm": method}
         newcertcontent = tests.certgen.certgen(
-            f"rsaleaftestcert-{method}", asn1publickey, signature_alg, finalcert
+            f"rsaleaf-testcert-{method}", asn1publickey, signature_alg, finalcert
         )
         tbscert = asn1crypto.x509.TbsCertificate(newcertcontent)
 
@@ -115,10 +115,10 @@ def test(session, baseurl):  # pylint: disable=too-many-locals
         finalcert = asn1crypto.x509.Certificate(signedcertparams)
 
         finalcertpem = asn1crypto.pem.armor("CERTIFICATE", finalcert.dump())
-        with open(f"tests/test-leafcert-rsa-{method}.pem", "wb") as file:
+        with open(f"tests/test-leaf-cert-rsa-{method}.pem", "wb") as file:
             file.write(finalcertpem)
         params = {
-            "label": "RSAleafcert-{method}",
+            "label": "RSAleaf-cert-{method}",
             "pem": True,
             "data": base64.b64encode(finalcertpem).decode(),
         }
