@@ -116,4 +116,3 @@ def test_edwards(client, module, slot):
         ]
     )
     assert edwards_X["result"][0]["KEY_TYPE"] == "EC_EDWARDS"
-

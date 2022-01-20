@@ -1,5 +1,6 @@
 from base64 import b64encode, b64decode
 
+
 def _encrypt(client, module, slot, params, bits):
     resp = client.post(f"/hsm/{module}/{slot}/encrypt", json=params).json()
     assert resp["module"] == module
@@ -8,6 +9,7 @@ def _encrypt(client, module, slot, params, bits):
     assert len(b64decode(encrypted)) == bits / 8, "Length error RSA encrypt"
     return encrypted
 
+
 def _decrypt(client, module, slot, params):
     resp = client.post(f"/hsm/{module}/{slot}/decrypt", json=params).json()
     assert resp["module"] == module
@@ -15,10 +17,13 @@ def _decrypt(client, module, slot, params):
     decrypted = resp["result"]
     return b64decode(decrypted)
 
+
 def test_rsaencrypt(client, module, slot):
     message = b"Hallo wereld"
     params = {"label": "RSAkey", "objtype": "PUBLIC_KEY"}
-    bits = client.post(f"/hsm/{module}/{slot}", json=params).json()["objects"][0]["MODULUS_BITS"]
+    bits = client.post(f"/hsm/{module}/{slot}", json=params).json()["objects"][0][
+        "MODULUS_BITS"
+    ]
 
     # Basic encrypt and decrypt
     # For a short message of 1 block it's MODULES_BITS long
@@ -39,7 +44,9 @@ def test_rsaencrypt(client, module, slot):
 def test_rsaencrypt_pkcs(client, module, slot):
     message = b"Hallo wereld"
     params = {"label": "RSAkey", "objtype": "PUBLIC_KEY"}
-    bits = client.post(f"/hsm/{module}/{slot}", json=params).json()["objects"][0]["MODULUS_BITS"]
+    bits = client.post(f"/hsm/{module}/{slot}", json=params).json()["objects"][0][
+        "MODULUS_BITS"
+    ]
     params = {
         "label": "RSAkey",
         "objtype": "PUBLIC_KEY",
@@ -59,7 +66,9 @@ def test_rsaencrypt_pkcs(client, module, slot):
 def test_rsaencrypt_pkcs_oaep(client, module, slot):
     message = b"Hallo wereld"
     params = {"label": "RSAkey", "objtype": "PUBLIC_KEY"}
-    bits = client.post(f"/hsm/{module}/{slot}", json=params).json()["objects"][0]["MODULUS_BITS"]
+    bits = client.post(f"/hsm/{module}/{slot}", json=params).json()["objects"][0][
+        "MODULUS_BITS"
+    ]
     params = {
         "label": "RSAkey",
         "objtype": "PUBLIC_KEY",
@@ -76,4 +85,3 @@ def test_rsaencrypt_pkcs_oaep(client, module, slot):
         "data": _encrypt(client, module, slot, params, bits),
     }
     assert _decrypt(client, module, slot, params) == message
-
