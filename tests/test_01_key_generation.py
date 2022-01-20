@@ -97,7 +97,10 @@ def test_eckey(client, module, slot):
 
 
 def test_edwards(client, module, slot):
-    if 'EC_EDWARDS_KEY_PAIR_GEN' in client.get(f"/hsm/{module}/{slot}").json()["mechanisms"]:
+    if (
+        "EC_EDWARDS_KEY_PAIR_GEN"
+        in client.get(f"/hsm/{module}/{slot}").json()["mechanisms"]
+    ):
         params = {"curve": "curve25519", "label": "X25519key"}
         edwards_X = client.post(
             f"/hsm/{module}/{slot}/generate/edwards", json=params

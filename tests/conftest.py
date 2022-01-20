@@ -11,10 +11,10 @@ def client():
 
 
 @pytest.fixture
-def module(client):
-    return client.get("/hsm/list").json()["modules"][0]
+def module(clientarg):
+    return clientarg.get("/hsm/list").json()["modules"][0]
 
 
 @pytest.fixture
-def slot(client, module):
-    return client.get(f"/hsm/{module}").json()["slots"][0]
+def slot(clientarg, modulearg):
+    return clientarg.get(f"/hsm/{modulearg}").json()["slots"][0]
