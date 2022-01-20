@@ -246,14 +246,3 @@ async def importdata(module: Modules, slot: Slots, so: ImportObject):
 @app.get("/stopandexit", tags=["Development only"])
 async def stopandexit():
     sys.exit()
-
-
-# import pkcs11
-# import pkcs11.util
-# import pkcs11.util.rsa
-# from pkcs11.util.ec import encode_named_curve_parameters
-# import asn1crypto.pem
-# from asn1crypto.keys import ECDomainParameters
-# lib = pkcs11.lib('/usr/lib64/pkcs11/libsofthsm2.so')
-# token = lib.get_token(token_label='HSM-000')
-# session = token.open(rw=True, user_pin='1234')

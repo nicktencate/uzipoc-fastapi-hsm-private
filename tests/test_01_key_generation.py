@@ -1,6 +1,9 @@
 def test_genaes(client, module, slot):
     params = {"bits": 256, "label": "AESkey"}
     resp = client.post(f"/hsm/{module}/{slot}/generate/aes", json=params).json()
+    del resp["result"][0]["CHECK_VALUE"]
+    assert resp["module"] == module
+    assert resp["slot"] == slot
     assert resp == {
         "module": module,
         "slot": slot,
@@ -10,7 +13,6 @@ def test_genaes(client, module, slot):
                 "TOKEN": True,
                 "PRIVATE": True,
                 "LABEL": "AESkey",
-                "CHECK_VALUE": "86c5ee",
                 "KEY_TYPE": "AES",
                 "SENSITIVE": True,
                 "ENCRYPT": True,
@@ -31,11 +33,34 @@ def test_genaes(client, module, slot):
     }
 
 
+def test_genrsa(client, module, slot):
+    params = {"bits": 4096, "label": "RSAkey"}
+    resp = client.post(f"/hsm/{module}/{slot}/generate/rsa", json=params).json()
+    assert resp["module"] == module
+    assert resp["slot"] == slot
+    assert len(resp["result"]) == 2
+    assert all(
+        i in resp["result"][0].keys()
+        for i in [
+            "CLASS",
+            "TOKEN",
+            "LABEL",
+            "KEY_TYPE",
+            "VERIFY",
+            "WRAP",
+            "ENCRYPT",
+            "publickey",
+        ]
+    )
+    assert resp["result"][0]["KEY_TYPE"] == "RSA"
+
+
 def test_gendsa(client, module, slot):
     params = {"bits": 2048, "label": "DSAkey"}
     resp = client.post(f"/hsm/{module}/{slot}/generate/dsa", json=params).json()
     assert resp["module"] == module
     assert resp["slot"] == slot
+    assert len(resp["result"]) == 2
     assert all(
         i in resp["result"][0].keys()
         for i in [
@@ -56,6 +81,7 @@ def test_eckey(client, module, slot):
     resp = client.post(f"/hsm/{module}/{slot}/generate/ec", json=params).json()
     assert resp["module"] == module
     assert resp["slot"] == slot
+    assert len(resp["result"]) == 2
     assert all(
         i in resp["result"][0].keys()
         for i in [
@@ -65,35 +91,29 @@ def test_eckey(client, module, slot):
             "KEY_TYPE",
             "VERIFY",
             "VERIFY_RECOVER",
-            "PRIME",
         ]
     )
     assert resp["result"][0]["KEY_TYPE"] == "EC"
 
 
-# def test_edwards(client, module, slot):
-#     params = {"curve": "curve25519", "label": "X25519key"}
-#     edwards_X = client.post(
-#         f"/hsm/{module}/{slot}/generate/edwards", json=params
-#     ).json()
-#     assert edwards_X["module"] == module
-#     assert edwards_X["slot"] == slot
-#     assert all(
-#         i in edwards_X["result"][0].keys()
-#         for i in [
-#             "CLASS",
-#             "TOKEN",
-#             "LABEL",
-#             "KEY_TYPE",
-#             "VERIFY",
-#             "VERIFY_RECOVER",
-#             "PRIME",
-#         ]
-#     )
-#     assert edwards_X["result"][0]["KEY_TYPE"] == "EC"
+def test_edwards(client, module, slot):
+    params = {"curve": "curve25519", "label": "X25519key"}
+    edwards_X = client.post(
+        f"/hsm/{module}/{slot}/generate/edwards", json=params
+    ).json()
+    assert edwards_X["module"] == module
+    assert edwards_X["slot"] == slot
+    assert len(edwards_X["result"]) == 2
+    assert all(
+        i in edwards_X["result"][0].keys()
+        for i in [
+            "CLASS",
+            "TOKEN",
+            "LABEL",
+            "KEY_TYPE",
+            "VERIFY",
+            "VERIFY_RECOVER",
+        ]
+    )
+    assert edwards_X["result"][0]["KEY_TYPE"] == "EC_EDWARDS"
 
-    # params = {"curve": "ed25519", "label": "ED25519key"}
-    # edwards_ED = client.post(
-    #     f"/hsm/{module}/{slot}/generate/edwards", json=params
-    # ).json()
-    # print(edwards_ED)
