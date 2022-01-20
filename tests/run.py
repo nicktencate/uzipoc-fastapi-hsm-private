@@ -19,6 +19,7 @@ from tests import rsacert
 from tests import eccert
 from tests import edcert
 from tests import importkeys
+from tests import cmssign
 
 BASE = "http://localhost:8000/hsm/"
 
@@ -83,6 +84,10 @@ print("Time: ", time() - start)
 
 start = time()
 assert edsign.test(s, baseurl), "ED sign and verify error"
+print("Time: ", time() - start)
+
+start = time()
+assert cmssign.test(s, baseurl), "CMS sign error"
 print("Time: ", time() - start)
 
 if len(sys.argv) < 2:

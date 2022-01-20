@@ -35,11 +35,13 @@ testrun:
 runtest:
 	./tests/genopensslkeys.sh
 	. .venv/bin/activate && ${env} python3 -m tests.run
-	@for cert in tests/test-cert-*.pem;do openssl verify -CAfile $$cert $$cert;done
+	@for cert in tests/*leaf*; do echo "==== $$cert ==="; openssl verify -CAfile $${cert/leaf/root} $$cert; done
+	openssl cms -verify -in tests/signed.cms.pem -inform PEM  -CAfile tests/test-root-cert-ec-sha512_ecdsa.pem >/dev/null
 
 runtest-dev:
 	. .venv/bin/activate && ${env} python3 -m tests.run dev
-	@for cert in tests/test-cert-*.pem;do openssl verify -CAfile $$cert $$cert;done
+	@for cert in tests/*leaf*; do echo "==== $$cert ==="; openssl verify -CAfile $${cert/leaf/root} $$cert; done
+	openssl cms -verify -in tests/signed.cms.pem -inform PEM  -CAfile tests/test-root-cert-ec-sha512_ecdsa.pem >/dev/null
 
 .bootstrap:
 	bash ./bootstrap.sh

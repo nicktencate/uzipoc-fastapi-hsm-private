@@ -121,6 +121,8 @@ def test(session, baseurl):  # pylint: disable = too-many-locals
     with open("tests/signed.cms.pem", "wb") as file:
         file.write(asn1crypto.pem.armor("CMS", asn1obj.dump()))
 
+    return True
+
 
 if __name__ == "__main__":
     import requests
