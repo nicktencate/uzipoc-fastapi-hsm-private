@@ -11,10 +11,10 @@ def client():
 
 
 @pytest.fixture
-def module(client):
+def module(client):  # pylint: disable=redefined-outer-name
     return client.get("/hsm/list").json()["modules"][0]
 
 
 @pytest.fixture
-def slot(client, module):
+def slot(client, module):  # pylint: disable=redefined-outer-name
     return client.get(f"/hsm/{module}").json()["slots"][0]

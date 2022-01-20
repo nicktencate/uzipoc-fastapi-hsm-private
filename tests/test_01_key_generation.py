@@ -97,22 +97,26 @@ def test_eckey(client, module, slot):
 
 
 def test_edwards(client, module, slot):
-    params = {"curve": "curve25519", "label": "X25519key"}
-    edwards_X = client.post(
-        f"/hsm/{module}/{slot}/generate/edwards", json=params
-    ).json()
-    assert edwards_X["module"] == module
-    assert edwards_X["slot"] == slot
-    assert len(edwards_X["result"]) == 2
-    assert all(
-        i in edwards_X["result"][0].keys()
-        for i in [
-            "CLASS",
-            "TOKEN",
-            "LABEL",
-            "KEY_TYPE",
-            "VERIFY",
-            "VERIFY_RECOVER",
-        ]
-    )
-    assert edwards_X["result"][0]["KEY_TYPE"] == "EC_EDWARDS"
+    if (
+        "EC_EDWARDS_KEY_PAIR_GEN"
+        in client.get(f"/hsm/{module}/{slot}").json()["mechanisms"]
+    ):
+        params = {"curve": "curve25519", "label": "X25519key"}
+        edwards_X = client.post(
+            f"/hsm/{module}/{slot}/generate/edwards", json=params
+        ).json()
+        assert edwards_X["module"] == module
+        assert edwards_X["slot"] == slot
+        assert len(edwards_X["result"]) == 2
+        assert all(
+            i in edwards_X["result"][0].keys()
+            for i in [
+                "CLASS",
+                "TOKEN",
+                "LABEL",
+                "KEY_TYPE",
+                "VERIFY",
+                "VERIFY_RECOVER",
+            ]
+        )
+        assert edwards_X["result"][0]["KEY_TYPE"] == "EC_EDWARDS"
