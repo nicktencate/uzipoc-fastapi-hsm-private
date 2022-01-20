@@ -20,6 +20,12 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          python -m pip install --upgrade pip
+          make venv
+          sudo apt install softhsm2 libsofthsm2
       - uses: actions/cache@v2
         id: cache-venv
         with:
@@ -36,3 +42,5 @@ jobs:
         run: make pip-sync-dev
       - name: Check linting
         run: make lint
+      - name: Testing
+        run: make test
