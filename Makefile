@@ -32,6 +32,7 @@ run:
 test:
 	bash ./bootstrap.sh
 	SOFTHSM2_CONF=./softhsm2.conf . .venv/bin/activate && ${env} pytest -vvv
+
 testrun:
 	bash ./bootstrap.sh
 	SOFTHSM2_CONF=./softhsm2.conf . .venv/bin/activate && ${env} python3 -m hypercorn app.main:app --reload -b 0

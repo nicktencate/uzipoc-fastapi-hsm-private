@@ -120,3 +120,22 @@ def test_edwards(client, module, slot):
             ]
         )
         assert edwards_X["result"][0]["KEY_TYPE"] == "EC_EDWARDS"
+        params = {"curve": "ed25519", "label": "ED25519key"}
+        edwards_X = client.post(
+            f"/hsm/{module}/{slot}/generate/edwards", json=params
+        ).json()
+        assert edwards_X["module"] == module
+        assert edwards_X["slot"] == slot
+        assert len(edwards_X["result"]) == 2
+        assert all(
+            i in edwards_X["result"][0].keys()
+            for i in [
+                "CLASS",
+                "TOKEN",
+                "LABEL",
+                "KEY_TYPE",
+                "VERIFY",
+                "VERIFY_RECOVER",
+            ]
+        )
+        assert edwards_X["result"][0]["KEY_TYPE"] == "EC_EDWARDS"

@@ -5,7 +5,7 @@ import asn1crypto.pem
 
 import tests.certgen
 
-def _sign(client, module, slot, params, bits):
+def _sign(client, module, slot, params):
     resp = client.post(f"/hsm/{module}/{slot}/sign", json=params).json()
     assert resp["module"] == module
     assert resp["slot"] == slot
@@ -25,10 +25,6 @@ def makecert(client, module, slot, signature_alg, certcontent):
         }
     )
 
-    params = {"label": "RSAkey", "objtype": "PUBLIC_KEY"}
-    pk = client.post(f"/hsm/{module}/{slot}", json=params).json()["objects"][0]
-    bits = pk["MODULUS_BITS"]
-
     params = {
         "label": "ECkey",
         "objtype": "PRIVATE_KEY",
@@ -41,7 +37,7 @@ def makecert(client, module, slot, signature_alg, certcontent):
     signedcertparams = {
         "tbs_certificate": tbscert,
         "signature_algorithm": signature_alg,
-        "signature_value": _sign(client, module, slot, params, bits)
+        "signature_value": _sign(client, module, slot, params)
     }
     return asn1crypto.x509.Certificate(signedcertparams)
 

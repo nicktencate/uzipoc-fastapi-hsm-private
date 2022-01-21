@@ -1,57 +1,47 @@
 import hashlib
 from base64 import b64encode, b64decode
+import codecs
 
 import asn1crypto.pem
 
 import tests.certgen
 
-def _sign(client, module, slot, params, bits):
+import tests.asn1patches
+
+def _sign(client, module, slot, params):
     resp = client.post(f"/hsm/{module}/{slot}/sign", json=params).json()
     assert resp["module"] == module
     assert resp["slot"] == slot
     signature = resp["result"]
-    assert len(b64decode(signature)) == bits / 8, "Length error RSA sign"
+    assert len(b64decode(signature)) == 64, "Length error ED sign"
     return b64decode(signature)
+
 
 def makecert(client, module, slot, signature_alg, certcontent):
     tbscert = asn1crypto.x509.TbsCertificate(certcontent)
-    hashmethod = signature_alg["algorithm"][: signature_alg["algorithm"].index("_")]
-
-    hashasn1 = asn1crypto.tsp.MessageImprint(
-        {
-            "hash_algorithm": {"algorithm": hashmethod},
-            "hashed_message": getattr(hashlib, hashmethod)(tbscert.dump()).digest(),
-        }
-    )
-
-    params = {"label": "RSAkey", "objtype": "PUBLIC_KEY"}
-    pk = client.post(f"/hsm/{module}/{slot}", json=params).json()["objects"][0]
-    bits = pk["MODULUS_BITS"]
 
     params = {
-        "label": "RSAkey",
+        "label": "ED25519key",
         "objtype": "PRIVATE_KEY",
-        "data": b64encode(hashasn1.dump()).decode(),
-        "mechanism": "RSA_PKCS",
-        "hashmethod": hashmethod,
+        "data": b64encode(tbscert.dump()).decode(),
     }
 
     signedcertparams = {
         "tbs_certificate": tbscert,
         "signature_algorithm": signature_alg,
-        "signature_value": _sign(client, module, slot, params, bits)
+        "signature_value": _sign(client, module, slot, params)
     }
     return asn1crypto.x509.Certificate(signedcertparams)
 
 def gencert(client, module, slot, method, asn1publickey):
     signature_alg = {"algorithm": method}
     certcontent = tests.certgen.certgen(
-        f"rsaroottestcert-{method}", asn1publickey, signature_alg
+        f"edroottestcert-{method}", asn1publickey, signature_alg
     )
     rootcert = makecert(client, module, slot, signature_alg, certcontent)
 
     certcontent = tests.certgen.certgen(
-        f"rsaleaf-testcert-{method}", asn1publickey, signature_alg, rootcert
+        f"edleaf-testcert-{method}", asn1publickey, signature_alg, rootcert
     )
     leafcert = makecert(client, module, slot, signature_alg, certcontent)
 
@@ -60,10 +50,10 @@ def gencert(client, module, slot, method, asn1publickey):
 
 def writecert(client, module, slot, cert, node, method):
     finalcertpem = asn1crypto.pem.armor("CERTIFICATE", cert.dump())
-    with open(f"tests/test-{node}-cert-rsa-{method}.pem", "wb") as file:
+    with open(f"tests/test-{node}-cert-ec-{method}.pem", "wb") as file:
         file.write(finalcertpem)
     params = {
-        "label": f"RSA{node}-cert-{method}",
+        "label": f"ED{node}-cert-{method}",
         "pem": True,
         "data": b64encode(finalcertpem).decode(),
     }
@@ -72,25 +62,19 @@ def writecert(client, module, slot, cert, node, method):
 
 
 def test_default(client, module, slot):
-    params = {"label": "RSAkey", "objtype": "PUBLIC_KEY"}
-    pk = client.post(f"/hsm/{module}/{slot}", json=params).json()["objects"][0]
-    bits = pk["MODULUS_BITS"]
-    publickey = pk["publickey"]
+    params = {
+        "label": "ED25519key",
+        "objtype": "PUBLIC_KEY",
+    }
+    publickey = (
+        client.post(f"/hsm/{module}/{slot}", json=params).json()["objects"][0]["EC_POINT"].encode()
+    )
     asn1publickey = asn1crypto.keys.PublicKeyInfo(
         {
-            "algorithm": {"algorithm": "rsa"},
-            "public_key": asn1crypto.keys.RSAPublicKey.load(
-                asn1crypto.pem.unarmor(publickey.encode())[2]
-            ).dump()
+            "algorithm": {"algorithm": "ed25519"},
+            "public_key": asn1crypto.core.load(codecs.decode(publickey, "hex")).native,
         }
     )
 
-    for method in [
-        "md5_rsa",
-        "sha1_rsa",
-        "sha224_rsa",
-        "sha256_rsa",
-        "sha384_rsa",
-        "sha512_rsa",
-    ]:
+    for method in ["ed25519"]:
         gencert(client, module, slot, method, asn1publickey)
