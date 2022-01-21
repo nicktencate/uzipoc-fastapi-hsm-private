@@ -10,8 +10,7 @@ import asn1crypto.algos
 
 from tests.asn1patches import SMIMECapability, SMIMECapabilities
 
-
-def test(session, baseurl):  # pylint: disable = too-many-locals
+def test_cms_ec(client, module, slot):  # pylint: disable = too-many-locals
     message = b"Content-Type: text/plain\r\n\r\nHallow wereld\r\n"
     sd = asn1crypto.cms.SignedData()
     hashalgo = "sha256"
@@ -19,7 +18,6 @@ def test(session, baseurl):  # pylint: disable = too-many-locals
     certs = []
     for certfile in [
         "tests/test-leaf-cert-ec-sha512_ecdsa.pem",
-        # "tests/test-leafcert-rsa-sha256_rsa.pem",
     ]:
         with open(certfile, "rb") as file:
             der = asn1crypto.pem.unarmor(file.read())[2]
@@ -75,7 +73,7 @@ def test(session, baseurl):  # pylint: disable = too-many-locals
                 "mechanism": "ECDSA",
             }
             signature = b64decode(
-                session.post(baseurl + "/sign", json=params).json()["result"]
+                client.post(f"/hsm/{module}/{slot}/sign", json=params).json()["result"]
             )
         elif signtype == "rsa":
             hashasn1 = asn1crypto.tsp.MessageImprint(
@@ -92,7 +90,7 @@ def test(session, baseurl):  # pylint: disable = too-many-locals
                 "hashmethod": hashalgo,
             }
             signature = b64decode(
-                session.post(baseurl + "/sign", json=params).json()["result"]
+                client.post(f"/hsm/{module}/{slot}/sign", json=params).json()["result"]
             )
 
         sid = {
@@ -120,9 +118,3 @@ def test(session, baseurl):  # pylint: disable = too-many-locals
     )
     with open("tests/signed.cms.pem", "wb") as file:
         file.write(asn1crypto.pem.armor("CMS", asn1obj.dump()))
-
-
-if __name__ == "__main__":
-    import requests
-
-    test(requests.Session(), "http://localhost:8000/hsm/softhsm/SoftHSMLabel")
