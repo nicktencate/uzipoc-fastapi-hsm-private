@@ -8,7 +8,7 @@ import asn1crypto.pem
 import asn1crypto.core
 import asn1crypto.algos
 
-from tests.asn1patches import SMIMECapability, SMIMECapabilities
+import tests.asn1patches  # pylint: disable=unused-import
 
 def test_cms_ec(client, module, slot):  # pylint: disable = too-many-locals
     message = b"Content-Type: text/plain\r\n\r\nHallow wereld\r\n"
@@ -42,25 +42,21 @@ def test_cms_ec(client, module, slot):  # pylint: disable = too-many-locals
         mhash = getattr(hashlib, hashalgo)(message).digest()
         # No moar old shit like des, 3des and rc2
         capabilities = [
-            SMIMECapability(
-                [
-                    {"algorithm": algo}
-                    for algo in asn1crypto.algos.EncryptionAlgorithm._oid_specs  # pylint: disable=protected-access
-                    if algo.startswith("aes") and algo.endswith("_cbc")
-                ]
-            )
+            [
+                {"algorithm": algo}
+                for algo in asn1crypto.algos.EncryptionAlgorithm._oid_specs  # pylint: disable=protected-access
+                if algo.startswith("aes") and algo.endswith("_cbc")
+            ]
         ]
         signed_attrs = [
-            asn1crypto.cms.CMSAttribute({"type": "content_type", "values": ["data"]}),
-            asn1crypto.cms.CMSAttribute({"type": "signing_time", "values": [signtime]}),
-            asn1crypto.cms.CMSAttribute({"type": "message_digest", "values": [mhash]}),
+            {"type": "content_type", "values": ["data"]},
+            {"type": "signing_time", "values": [signtime]},
+            {"type": "message_digest", "values": [mhash]},
             # signature_time_stamp_token => Standaard, kan via freets
-            asn1crypto.cms.CMSAttribute(
-                {
-                    "type": "1.2.840.113549.1.9.15",
-                    "values": SMIMECapabilities(capabilities),
-                }
-            ),
+            {
+                "type": "1.2.840.113549.1.9.15",
+                "values": capabilities,
+            },
         ]
         signed_attrs = asn1crypto.cms.CMSAttributes(signed_attrs)
         thehash = getattr(hashlib, hashalgo)(signed_attrs.dump()).digest()
@@ -93,13 +89,14 @@ def test_cms_ec(client, module, slot):  # pylint: disable = too-many-locals
                 client.post(f"/hsm/{module}/{slot}/sign", json=params).json()["result"]
             )
 
-        sid = {
-            "issuer": cert["tbs_certificate"]["issuer"],
-            "serial_number": cert["tbs_certificate"]["serial_number"],
-        }
         signer_info = {
             "version": signdata["version"],
-            "sid": {"issuer_and_serial_number": sid},
+            "sid": {
+                "issuer_and_serial_number": {
+                    "issuer": cert["tbs_certificate"]["issuer"],
+                    "serial_number": cert["tbs_certificate"]["serial_number"],
+                }
+            },
             "digest_algorithm": digestalgo,
             "signature_algorithm": {"algorithm": f"{hashalgo}_{signtype}"},
             "unsigned_attrs": None,
@@ -118,3 +115,5 @@ def test_cms_ec(client, module, slot):  # pylint: disable = too-many-locals
     )
     with open("tests/signed.cms.pem", "wb") as file:
         file.write(asn1crypto.pem.armor("CMS", asn1obj.dump()))
+
+    return True
