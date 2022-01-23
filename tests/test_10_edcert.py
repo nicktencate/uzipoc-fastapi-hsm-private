@@ -66,23 +66,29 @@ def writecert(
 
 
 def test_default(client, module, slot):
-    params = {
-        "label": "ED25519key",
-        "objtype": "PUBLIC_KEY",
-    }
-    publickey = (
-        client.post(f"/hsm/{module}/{slot}", json=params)
-        .json()["objects"][0]["EC_POINT"]
-        .encode()
-    )
-    tests.asn1patches.switchcallback()
-    asn1publickey = asn1crypto.keys.PublicKeyInfo(
-        {
-            "algorithm": {"algorithm": "ed25519"},
-            "public_key": asn1crypto.core.load(codecs.decode(publickey, "hex")).native,
+    if (
+        "EC_EDWARDS_KEY_PAIR_GEN"
+        in client.get(f"/hsm/{module}/{slot}").json()["mechanisms"]
+    ):
+        params = {
+            "label": "ED25519key",
+            "objtype": "PUBLIC_KEY",
         }
-    )
+        publickey = (
+            client.post(f"/hsm/{module}/{slot}", json=params)
+            .json()["objects"][0]["EC_POINT"]
+            .encode()
+        )
+        tests.asn1patches.switchcallback()
+        asn1publickey = asn1crypto.keys.PublicKeyInfo(
+            {
+                "algorithm": {"algorithm": "ed25519"},
+                "public_key": asn1crypto.core.load(
+                    codecs.decode(publickey, "hex")
+                ).native,
+            }
+        )
 
-    for method in ["ed25519"]:
-        gencert(client, module, slot, method, asn1publickey)
-    tests.asn1patches.switchcallback()
+        for method in ["ed25519"]:
+            gencert(client, module, slot, method, asn1publickey)
+        tests.asn1patches.switchcallback()
