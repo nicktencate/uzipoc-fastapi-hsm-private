@@ -33,7 +33,7 @@ test:
 	./tests/genopensslkeys.sh
 	bash ./bootstrap.sh
 	bash ./runpytest.sh
-	@for cert in tests/*leaf*; do echo "==== $$cert ==="; openssl verify -CAfile $${cert/leaf/root} $$cert; done
+	bash ./openssl-test-certs.sh
 	openssl cms -verify -in tests/signed.cms.pem -inform PEM  -CAfile tests/test-root-cert-ec-sha512_ecdsa.pem >/dev/null
 
 testrun:
