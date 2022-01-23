@@ -32,7 +32,7 @@ run:
 test:
 	./tests/genopensslkeys.sh
 	bash ./bootstrap.sh
-	SOFTHSM2_CONF=./softhsm2.conf . .venv/bin/activate && ${env} pytest -vvv
+	SOFTHSM2_CONF=$$PWD/softhsm2.conf . .venv/bin/activate && ${env} pytest -vvv
 	@for cert in tests/*leaf*; do echo "==== $$cert ==="; openssl verify -CAfile $${cert/leaf/root} $$cert; done
 	openssl cms -verify -in tests/signed.cms.pem -inform PEM  -CAfile tests/test-root-cert-ec-sha512_ecdsa.pem >/dev/null
 
