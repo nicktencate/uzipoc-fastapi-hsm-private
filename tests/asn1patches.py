@@ -48,4 +48,17 @@ asn1crypto.algos.SignedDigestAlgorithmId._reverse_map[  # pylint: disable=protec
 asn1crypto.algos.SignedDigestAlgorithmId._reverse_map[  # pylint: disable=protected-access
     "ed448"
 ] = "1.3.101.113"
-asn1crypto.keys.PublicKeyInfo._spec_callbacks = None  # pylint: disable=protected-access
+
+savecallback = None
+
+
+def switchcallback():
+    global savecallback  # pylint: disable=global-statement
+    newsavecallback = (
+        asn1crypto.keys.PublicKeyInfo._spec_callbacks  # pylint: disable=protected-access
+    )
+    asn1crypto.keys.PublicKeyInfo._spec_callbacks = (  # pylint: disable=protected-access
+        savecallback
+    )
+    savecallback = newsavecallback
+    print(savecallback)

@@ -21,29 +21,68 @@ HasherToCryptoHash = {
 }
 
 
-def testpkcs(
-    session, baseurl, allmechanisms, bits, publickey
-):  # pylint: disable=too-many-locals
+def _sign(client, module, slot, params, bits):
+    resp = client.post(f"/hsm/{module}/{slot}/sign", json=params).json()
+    assert resp["module"] == module
+    assert resp["slot"] == slot
+    signature = resp["result"]
+    assert len(b64decode(signature)) == bits / 8, "Length error RSA sign"
+    return signature
+
+
+def _verify(client, module, slot, params):
+    resp = client.post(f"/hsm/{module}/{slot}/verify", json=params).json()
+    assert resp["module"] == module
+    assert resp["slot"] == slot
+    signature = resp["result"]
+    return signature
+
+
+def test_default(client, module, slot):
     message = b"Hallo wereld"
+
+    params = {"label": "RSAkey", "objtype": "PUBLIC_KEY"}
+    pk = client.post(f"/hsm/{module}/{slot}", json=params).json()["objects"][0]
+    bits = pk["MODULUS_BITS"]
+
+    params = {
+        "label": "RSAkey",
+        "objtype": "PRIVATE_KEY",
+        "data": b64encode(message).decode(),
+    }
+
+    params = {
+        "label": "RSAkey",
+        "objtype": "PUBLIC_KEY",
+        "data": b64encode(message).decode(),
+        "signature": _sign(client, module, slot, params, bits),
+    }
+    assert _verify(client, module, slot, params)
+
+
+def test_pkcs(client, module, slot):
+    message = b"Hallo wereld"
+    params = {"label": "RSAkey", "objtype": "PUBLIC_KEY"}
+    pk = client.post(f"/hsm/{module}/{slot}", json=params).json()["objects"][0]
+    bits = pk["MODULUS_BITS"]
+    publickey = pk["publickey"]
+
     mechanisms = [
         mechanism
-        for mechanism in allmechanisms
+        for mechanism in client.get(f"/hsm/{module}/{slot}").json()["mechanisms"]
         if mechanism.startswith("SHA") and mechanism.endswith("_RSA_PKCS")
     ]
     params = {}
     signature = None
     for mech in mechanisms:
-        print("Testing RSA sign: ", mech)
         params = {
             "label": "RSAkey",
             "objtype": "PRIVATE_KEY",
             "data": b64encode(message).decode(),
             "mechanism": mech,
         }
-        signature = session.post(baseurl + "/sign", json=params).json()["result"]
-        assert len(b64decode(signature)) == bits / 8, "Length error RSA sign pkcs"
+        signature = _sign(client, module, slot, params, bits)
 
-        print("Testing RSA verify (hsm): ", mech)
         params = {
             "label": "RSAkey",
             "objtype": "PUBLIC_KEY",
@@ -51,12 +90,9 @@ def testpkcs(
             "mechanism": mech,
             "signature": signature,
         }
-        decrypted = session.post(baseurl + "/verify", json=params).json()["result"]
-        assert decrypted is True
+        assert _verify(client, module, slot, params)
 
-        print("Testing RSA verify (external): ", mech)
-        hashmethod = mech[: mech.index("_")].lower()
-        hasher = getattr(hashlib, hashmethod)
+        hasher = getattr(hashlib, mech[: mech.index("_")].lower())
         pubkey = RSA.importKey(publickey)
         psig = number.long_to_bytes(
             pow(number.bytes_to_long(b64decode(signature)), pubkey.e, pubkey.n)
@@ -72,19 +108,19 @@ def testpkcs(
 # it does receive the constructed hash1asn message that needs to be signed.
 # the verifier does receive the whole message and the hashing is done by the HSM
 # this is deliberately different to show and test how it works.
-def testpkcshash(
-    session, baseurl, allmechanisms, bits
-):  # pylint: disable=too-many-locals
+def test_pkcshash(client, module, slot):
     message = b"Hallo wereld"
+    params = {"label": "RSAkey", "objtype": "PUBLIC_KEY"}
+    pk = client.post(f"/hsm/{module}/{slot}", json=params).json()["objects"][0]
+    bits = pk["MODULUS_BITS"]
+
     mechanisms = [
         mechanism
-        for mechanism in allmechanisms
+        for mechanism in client.get(f"/hsm/{module}/{slot}").json()["mechanisms"]
         if mechanism.startswith("SHA") and mechanism.endswith("_RSA_PKCS")
     ]
     params = {}
-    signature = None
     for mech in mechanisms:
-        print("Testing RSA sign: ", mech)
         hashmethod = mech[: mech.index("_")].lower()
         hashasn1 = asn1crypto.tsp.MessageImprint(
             {
@@ -99,33 +135,32 @@ def testpkcshash(
             "mechanism": mech[mech.index("_") + 1 :],
             "hashmethod": hashmethod,
         }
-        signature = session.post(baseurl + "/sign", json=params).json()["result"]
-        assert len(b64decode(signature)) == bits / 8, "Length error RSA sign pkcs"
 
-        print("Testing RSA verify: ", mech)
         params = {
             "label": "RSAkey",
             "objtype": "PUBLIC_KEY",
             "data": b64encode(message).decode(),
             "mechanism": mech,
-            "signature": signature,
+            "signature": _sign(client, module, slot, params, bits),
         }
-        decrypted = session.post(baseurl + "/verify", json=params).json()["result"]
-        assert decrypted is True
+        assert _verify(client, module, slot, params)
 
 
-def testpss(
-    session, baseurl, allmechanisms, bits, publickey
-):  # pylint: disable=too-many-locals
+def test_pss(client, module, slot):
     message = b"Hallo wereld"
+    params = {"label": "RSAkey", "objtype": "PUBLIC_KEY"}
+    pk = client.post(f"/hsm/{module}/{slot}", json=params).json()["objects"][0]
+    bits = pk["MODULUS_BITS"]
+    publickey = pk["publickey"]
+
     mechanisms = [
         mechanism
-        for mechanism in allmechanisms
+        for mechanism in client.get(f"/hsm/{module}/{slot}").json()["mechanisms"]
         if mechanism.startswith("SHA") and mechanism.endswith("_RSA_PKCS_PSS")
     ]
     for mech in mechanisms:
-        print("Testing RSA sign: ", mech)
         hashmethod = mech[: mech.index("_")].lower()
+
         params = {
             "label": "RSAkey",
             "objtype": "PRIVATE_KEY",
@@ -133,10 +168,8 @@ def testpss(
             "mechanism": mech,
             "hashmethod": hashmethod,
         }
-        signature = session.post(baseurl + "/sign", json=params).json()["result"]
-        assert len(b64decode(signature)) == bits / 8, "Length error RSA signpss"
+        signature = _sign(client, module, slot, params, bits)
 
-        print("Testing RSA verify: ", mech)
         params = {
             "label": "RSAkey",
             "objtype": "PUBLIC_KEY",
@@ -145,10 +178,8 @@ def testpss(
             "signature": signature,
             "hashmethod": hashmethod,
         }
-        decrypted = session.post(baseurl + "/verify", json=params).json()["result"]
-        assert decrypted is True
+        assert _verify(client, module, slot, params)
 
-        print("Testing RSA verify (external): ", mech)
         pubkey = RSA.importKey(publickey)
         psig = number.long_to_bytes(
             pow(number.bytes_to_long(b64decode(signature)), pubkey.e, pubkey.n)
@@ -168,26 +199,18 @@ def testpss(
         ), "Non-HSM verify error"
 
 
-# in this function the signer does not receive the data,
-# it does receive the constructed hash1asn message that needs to be signed.
-# the verifier does receive the whole message and the hashing is done by the HSM
-# this is deliberately different to show and test how it works.
-# The difference with the PKCS and PSS methods is that there is not need
-# to pack the hash into a structure, since PSS has an inherent checking function
-# for length.
-
-
-def testpsshash(
-    session, baseurl, allmechanisms, bits
-):  # pylint: disable=too-many-locals
+def test_pss_hash(client, module, slot):
     message = b"Hallo wereld"
+    params = {"label": "RSAkey", "objtype": "PUBLIC_KEY"}
+    pk = client.post(f"/hsm/{module}/{slot}", json=params).json()["objects"][0]
+    bits = pk["MODULUS_BITS"]
+
     mechanisms = [
         mechanism
-        for mechanism in allmechanisms
+        for mechanism in client.get(f"/hsm/{module}/{slot}").json()["mechanisms"]
         if mechanism.startswith("SHA") and mechanism.endswith("_RSA_PKCS_PSS")
     ]
     for mech in mechanisms:
-        print("Testing RSA sign hashed: ", mech)
         hashmethod = mech[: mech.index("_")].lower()
         params = {
             "label": "RSAkey",
@@ -198,33 +221,38 @@ def testpsshash(
             "mechanism": mech[mech.index("_") + 1 :],
             "hashmethod": hashmethod,
         }
-        signature = session.post(baseurl + "/sign", json=params).json()["result"]
-        assert len(b64decode(signature)) == bits / 8, "Length error RSA signpss"
-
-        print("Testing RSA verify: ", mech)
         params = {
             "label": "RSAkey",
             "objtype": "PUBLIC_KEY",
             "data": b64encode(message).decode(),
             "mechanism": mech,
-            "signature": signature,
+            "signature": _sign(client, module, slot, params, bits),
             "hashmethod": hashmethod,
         }
-        decrypted = session.post(baseurl + "/verify", json=params).json()["result"]
-        assert decrypted is True
+        assert _verify(client, module, slot, params)
 
 
-def testpssraw(
-    session, baseurl, allmechanisms, bits
-):  # pylint: disable=too-many-locals
+# in this function the signer does not receive the data,
+# it does receive the constructed hash1asn message that needs to be signed.
+# the verifier does receive the whole message and the hashing is done by the HSM
+# this is deliberately different to show and test how it works.
+# The difference with the PKCS and PSS methods is that there is not need
+# to pack the hash into a structure, since PSS has an inherent checking function
+# for length.
+
+
+def test_pss_hashext(client, module, slot):
     message = b"Hallo wereld"
+    params = {"label": "RSAkey", "objtype": "PUBLIC_KEY"}
+    pk = client.post(f"/hsm/{module}/{slot}", json=params).json()["objects"][0]
+    bits = pk["MODULUS_BITS"]
+
     mechanisms = [
         mechanism
-        for mechanism in allmechanisms
+        for mechanism in client.get(f"/hsm/{module}/{slot}").json()["mechanisms"]
         if mechanism.startswith("SHA") and mechanism.endswith("_RSA_PKCS_PSS")
     ]
     for mech in mechanisms:
-        print("Testing RSA raw sign: ", mech)
         hashmethod = mech[: mech.index("_")].lower()
         CryptoHash = HasherToCryptoHash[hashmethod]
         with open("/dev/urandom", "rb") as randfile:
@@ -237,62 +265,20 @@ def testpssraw(
                 ),
                 CryptoHash.digest_size,
             )
+
         params = {
             "label": "RSAkey",
             "objtype": "PRIVATE_KEY",
             "data": b64encode(rawencoded).decode(),
             "mechanism": "RSA_X_509",
         }
-        signature = session.post(baseurl + "/sign", json=params).json()["result"]
-        assert len(b64decode(signature)) == bits / 8, "Length error RSA encrypt"
 
-        print("Testing RSA verify from raw: ", mech)
         params = {
             "label": "RSAkey",
             "objtype": "PUBLIC_KEY",
             "data": b64encode(message).decode(),
             "mechanism": mech,
-            "signature": signature,
+            "signature": _sign(client, module, slot, params, bits),
             "hashmethod": hashmethod,
         }
-        decrypted = session.post(baseurl + "/verify", json=params).json()["result"]
-        assert decrypted is True
-
-
-def test(session, baseurl):
-
-    message = b"Hallo wereld"
-    params = {"label": "RSAkey", "objtype": "PUBLIC_KEY"}
-    pk = session.post(baseurl, json=params).json()["objects"][0]
-    bits = pk["MODULUS_BITS"]
-    publickey = pk["publickey"]
-
-    # Basic sign and verify
-    # For a short message of 1 block it's MODULES_BITS long
-    print("Testing RSA sign: default")
-    params = {
-        "label": "RSAkey",
-        "objtype": "PRIVATE_KEY",
-        "data": b64encode(message).decode(),
-    }
-    signature = session.post(baseurl + "/sign", json=params).json()["result"]
-    assert len(b64decode(signature)) == bits / 8, "Length error RSA sign"
-
-    print("Testing RSA verify: default")
-    params = {
-        "label": "RSAkey",
-        "objtype": "PUBLIC_KEY",
-        "data": b64encode(message).decode(),
-        "signature": signature,
-    }
-    decrypted = session.post(baseurl + "/verify", json=params).json()["result"]
-    assert decrypted is True
-
-    allmechanisms = session.get(baseurl).json()["mechanisms"]
-    testpkcs(session, baseurl, allmechanisms, bits, publickey)
-    testpkcshash(session, baseurl, allmechanisms, bits)
-    testpss(session, baseurl, allmechanisms, bits, publickey)
-    testpssraw(session, baseurl, allmechanisms, bits)
-    testpsshash(session, baseurl, allmechanisms, bits)
-
-    return True
+        assert _verify(client, module, slot, params)

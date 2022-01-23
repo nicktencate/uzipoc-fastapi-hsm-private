@@ -22,8 +22,9 @@ slots.removable = false
 EOF
 )
 
-echo "$SOFTHSMCONF" > softhsm2.conf
-SOFTHSM2_CONF=$(pwd)/softhsm2.conf
+
+SOFTHSM2_CONF=${SOFTHSM2_CONF:-$(pwd)/softhsm2.conf}
+echo "$SOFTHSMCONF" > $SOFTHSM2_CONF
 export SOFTHSM2_CONF
 
 
