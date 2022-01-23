@@ -22,7 +22,11 @@ def test_import(client, module, slot):
                 "data": base64.b64encode(keyfile.read()).decode(),
             }
             assert (
-                len(client.post(f"/hsm/{module}/{slot}/import", json=params).json()["objects"])
+                len(
+                    client.post(f"/hsm/{module}/{slot}/import", json=params).json()[
+                        "objects"
+                    ]
+                )
                 == 1
             ), f"Import error on {file}"
     return True

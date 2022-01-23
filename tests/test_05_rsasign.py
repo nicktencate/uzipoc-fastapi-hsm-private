@@ -92,8 +92,7 @@ def test_pkcs(client, module, slot):
         }
         assert _verify(client, module, slot, params)
 
-        hashmethod = mech[: mech.index("_")].lower()
-        hasher = getattr(hashlib, hashmethod)
+        hasher = getattr(hashlib, mech[: mech.index("_")].lower())
         pubkey = RSA.importKey(publickey)
         psig = number.long_to_bytes(
             pow(number.bytes_to_long(b64decode(signature)), pubkey.e, pubkey.n)
@@ -121,7 +120,6 @@ def test_pkcshash(client, module, slot):
         if mechanism.startswith("SHA") and mechanism.endswith("_RSA_PKCS")
     ]
     params = {}
-    signature = None
     for mech in mechanisms:
         hashmethod = mech[: mech.index("_")].lower()
         hashasn1 = asn1crypto.tsp.MessageImprint(
@@ -206,7 +204,6 @@ def test_pss_hash(client, module, slot):
     params = {"label": "RSAkey", "objtype": "PUBLIC_KEY"}
     pk = client.post(f"/hsm/{module}/{slot}", json=params).json()["objects"][0]
     bits = pk["MODULUS_BITS"]
-    publickey = pk["publickey"]
 
     mechanisms = [
         mechanism
@@ -244,12 +241,11 @@ def test_pss_hash(client, module, slot):
 # for length.
 
 
-def test_pss_hash(client, module, slot):
+def test_pss_hashext(client, module, slot):
     message = b"Hallo wereld"
     params = {"label": "RSAkey", "objtype": "PUBLIC_KEY"}
     pk = client.post(f"/hsm/{module}/{slot}", json=params).json()["objects"][0]
     bits = pk["MODULUS_BITS"]
-    publickey = pk["publickey"]
 
     mechanisms = [
         mechanism

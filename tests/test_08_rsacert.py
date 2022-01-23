@@ -6,6 +6,7 @@ import asn1crypto.core
 
 import tests.certgen
 
+
 def _sign(client, module, slot, params, bits):
     resp = client.post(f"/hsm/{module}/{slot}/sign", json=params).json()
     assert resp["module"] == module
@@ -13,6 +14,7 @@ def _sign(client, module, slot, params, bits):
     signature = resp["result"]
     assert len(b64decode(signature)) == bits / 8, "Length error RSA sign"
     return b64decode(signature)
+
 
 def makecert(client, module, slot, signature_alg, certcontent):
     tbscert = asn1crypto.x509.TbsCertificate(certcontent)
@@ -25,8 +27,8 @@ def makecert(client, module, slot, signature_alg, certcontent):
         }
     )
     # RFC 1321 should have type NULL && openssl interprets this as MUST
-    if hashmethod == 'md5':
-        hashasn1['hash_algorithm']['parameters'] = asn1crypto.core.Null()
+    if hashmethod == "md5":
+        hashasn1["hash_algorithm"]["parameters"] = asn1crypto.core.Null()
 
     params = {"label": "RSAkey", "objtype": "PUBLIC_KEY"}
     pk = client.post(f"/hsm/{module}/{slot}", json=params).json()["objects"][0]
@@ -43,9 +45,10 @@ def makecert(client, module, slot, signature_alg, certcontent):
     signedcertparams = {
         "tbs_certificate": tbscert,
         "signature_algorithm": signature_alg,
-        "signature_value": _sign(client, module, slot, params, bits)
+        "signature_value": _sign(client, module, slot, params, bits),
     }
     return asn1crypto.x509.Certificate(signedcertparams)
+
 
 def gencert(client, module, slot, method, asn1publickey):
     signature_alg = {"algorithm": method}
@@ -62,7 +65,10 @@ def gencert(client, module, slot, method, asn1publickey):
     writecert(client, module, slot, rootcert, "root", method)
     writecert(client, module, slot, leafcert, "leaf", method)
 
-def writecert(client, module, slot, cert, node, method):
+
+def writecert(
+    client, module, slot, cert, node, method
+):  # pylint: disable=too-many-arguments
     finalcertpem = asn1crypto.pem.armor("CERTIFICATE", cert.dump())
     with open(f"tests/test-{node}-cert-rsa-{method}.pem", "wb") as file:
         file.write(finalcertpem)
@@ -78,14 +84,13 @@ def writecert(client, module, slot, cert, node, method):
 def test_default(client, module, slot):
     params = {"label": "RSAkey", "objtype": "PUBLIC_KEY"}
     pk = client.post(f"/hsm/{module}/{slot}", json=params).json()["objects"][0]
-    bits = pk["MODULUS_BITS"]
     publickey = pk["publickey"]
     asn1publickey = asn1crypto.keys.PublicKeyInfo(
         {
             "algorithm": {"algorithm": "rsa", "parameters": None},
             "public_key": asn1crypto.keys.RSAPublicKey.load(
                 asn1crypto.pem.unarmor(publickey.encode())[2]
-            )
+            ),
         }
     )
 

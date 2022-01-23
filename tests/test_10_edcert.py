@@ -1,4 +1,3 @@
-import hashlib
 from base64 import b64encode, b64decode
 import codecs
 
@@ -7,6 +6,7 @@ import asn1crypto.pem
 import tests.certgen
 
 import tests.asn1patches
+
 
 def _sign(client, module, slot, params):
     resp = client.post(f"/hsm/{module}/{slot}/sign", json=params).json()
@@ -29,9 +29,10 @@ def makecert(client, module, slot, signature_alg, certcontent):
     signedcertparams = {
         "tbs_certificate": tbscert,
         "signature_algorithm": signature_alg,
-        "signature_value": _sign(client, module, slot, params)
+        "signature_value": _sign(client, module, slot, params),
     }
     return asn1crypto.x509.Certificate(signedcertparams)
+
 
 def gencert(client, module, slot, method, asn1publickey):
     signature_alg = {"algorithm": method}
@@ -48,7 +49,10 @@ def gencert(client, module, slot, method, asn1publickey):
     writecert(client, module, slot, rootcert, "root", method)
     writecert(client, module, slot, leafcert, "leaf", method)
 
-def writecert(client, module, slot, cert, node, method):
+
+def writecert(
+    client, module, slot, cert, node, method
+):  # pylint: disable=too-many-arguments
     finalcertpem = asn1crypto.pem.armor("CERTIFICATE", cert.dump())
     with open(f"tests/test-{node}-cert-ec-{method}.pem", "wb") as file:
         file.write(finalcertpem)
@@ -67,7 +71,9 @@ def test_default(client, module, slot):
         "objtype": "PUBLIC_KEY",
     }
     publickey = (
-        client.post(f"/hsm/{module}/{slot}", json=params).json()["objects"][0]["EC_POINT"].encode()
+        client.post(f"/hsm/{module}/{slot}", json=params)
+        .json()["objects"][0]["EC_POINT"]
+        .encode()
     )
     tests.asn1patches.switchcallback()
     asn1publickey = asn1crypto.keys.PublicKeyInfo(

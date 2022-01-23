@@ -1,11 +1,5 @@
 from base64 import b64encode, b64decode
-import hashlib
 
-import asn1crypto.tsp
-
-from Crypto.PublicKey import RSA
-from Crypto.Signature import PKCS1_PSS
-from Crypto.Util import number
 import Crypto.Hash.SHA
 import Crypto.Hash.SHA224
 import Crypto.Hash.SHA256
@@ -51,8 +45,7 @@ def test_default(client, module, slot):
             "data": b64encode(message).decode(),
             "mechanism": "ECDSA",
         }
-    
-    
+
         params = {
             "label": "ECkey",
             "objtype": "PUBLIC_KEY",
@@ -60,5 +53,5 @@ def test_default(client, module, slot):
             "mechanism": "ECDSA",
             "signature": _sign(client, module, slot, params),
         }
-    
+
         assert _verify(client, module, slot, params)

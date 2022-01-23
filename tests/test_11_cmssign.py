@@ -10,6 +10,7 @@ import asn1crypto.algos
 
 import tests.asn1patches  # pylint: disable=unused-import
 
+
 def test_cms_ec(client, module, slot):  # pylint: disable = too-many-locals
     message = b"Content-Type: text/plain\r\n\r\nHallow wereld\r\n"
     sd = asn1crypto.cms.SignedData()

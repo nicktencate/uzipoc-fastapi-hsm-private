@@ -51,9 +51,14 @@ asn1crypto.algos.SignedDigestAlgorithmId._reverse_map[  # pylint: disable=protec
 
 savecallback = None
 
+
 def switchcallback():
-  global savecallback
-  newsavecallback = asn1crypto.keys.PublicKeyInfo._spec_callbacks  # pylint: disable=protected-access
-  asn1crypto.keys.PublicKeyInfo._spec_callbacks = savecallback  # pylint: disable=protected-access
-  savecallback = newsavecallback
-  print(savecallback)
+    global savecallback  # pylint: disable=global-statement
+    newsavecallback = (
+        asn1crypto.keys.PublicKeyInfo._spec_callbacks  # pylint: disable=protected-access
+    )
+    asn1crypto.keys.PublicKeyInfo._spec_callbacks = (  # pylint: disable=protected-access
+        savecallback
+    )
+    savecallback = newsavecallback
+    print(savecallback)
