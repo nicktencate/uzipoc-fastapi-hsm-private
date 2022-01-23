@@ -43,4 +43,4 @@ jobs:
       - name: Check linting
         run: make lint
       - name: Testing
-        run: make test
+        run: SOFTHSM2_CONF=$(pwd)/softhsm2.conf make test
