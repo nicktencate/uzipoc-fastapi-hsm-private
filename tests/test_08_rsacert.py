@@ -2,6 +2,7 @@ import hashlib
 from base64 import b64encode, b64decode
 
 import asn1crypto.pem
+import asn1crypto.core
 
 import tests.certgen
 
@@ -23,6 +24,9 @@ def makecert(client, module, slot, signature_alg, certcontent):
             "hashed_message": getattr(hashlib, hashmethod)(tbscert.dump()).digest(),
         }
     )
+    # RFC 1321 should have type NULL && openssl interprets this as MUST
+    if hashmethod == 'md5':
+        hashasn1['hash_algorithm']['parameters'] = asn1crypto.core.Null()
 
     params = {"label": "RSAkey", "objtype": "PUBLIC_KEY"}
     pk = client.post(f"/hsm/{module}/{slot}", json=params).json()["objects"][0]
@@ -78,10 +82,10 @@ def test_default(client, module, slot):
     publickey = pk["publickey"]
     asn1publickey = asn1crypto.keys.PublicKeyInfo(
         {
-            "algorithm": {"algorithm": "rsa"},
+            "algorithm": {"algorithm": "rsa", "parameters": None},
             "public_key": asn1crypto.keys.RSAPublicKey.load(
                 asn1crypto.pem.unarmor(publickey.encode())[2]
-            ).dump()
+            )
         }
     )
 

@@ -23,9 +23,9 @@ def certgen(name, asn1publickey, signature_alg, rootcert=False):
             ].native
         )
         authki = hashlib.sha1(rootkey_tohash).digest()
-        authci = None
         authsn = rootcert["tbs_certificate"]["serial_number"]
         issuer = rootcert["tbs_certificate"]["subject"]
+        authci = [asn1crypto.x509.GeneralName({'directory_name': rootcert['tbs_certificate']['subject']})]
     else:
         rootkey_tohash = publickey_tohash
         authki = hashlib.sha1(publickey_tohash).digest()

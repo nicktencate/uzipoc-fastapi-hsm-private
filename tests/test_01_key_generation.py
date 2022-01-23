@@ -34,7 +34,7 @@ def test_genaes(client, module, slot):
 
 
 def test_genrsa(client, module, slot):
-    params = {"bits": 4096, "label": "RSAkey"}
+    params = {"bits": 2048, "label": "RSAkey"}
     resp = client.post(f"/hsm/{module}/{slot}/generate/rsa", json=params).json()
     assert resp["module"] == module
     assert resp["slot"] == slot

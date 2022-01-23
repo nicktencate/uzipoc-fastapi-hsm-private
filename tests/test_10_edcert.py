@@ -69,6 +69,7 @@ def test_default(client, module, slot):
     publickey = (
         client.post(f"/hsm/{module}/{slot}", json=params).json()["objects"][0]["EC_POINT"].encode()
     )
+    tests.asn1patches.switchcallback()
     asn1publickey = asn1crypto.keys.PublicKeyInfo(
         {
             "algorithm": {"algorithm": "ed25519"},
@@ -78,3 +79,4 @@ def test_default(client, module, slot):
 
     for method in ["ed25519"]:
         gencert(client, module, slot, method, asn1publickey)
+    tests.asn1patches.switchcallback()

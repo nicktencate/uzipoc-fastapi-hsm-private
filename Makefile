@@ -30,8 +30,11 @@ run:
 	. .venv/bin/activate && ${env} python3 -m hypercorn app.main:app --reload -b 0
 
 test:
+	./tests/genopensslkeys.sh
 	bash ./bootstrap.sh
 	SOFTHSM2_CONF=./softhsm2.conf . .venv/bin/activate && ${env} pytest -vvv
+	@for cert in tests/*leaf*; do echo "==== $$cert ==="; openssl verify -CAfile $${cert/leaf/root} $$cert; done
+	openssl cms -verify -in tests/signed.cms.pem -inform PEM  -CAfile tests/test-root-cert-ec-sha512_ecdsa.pem >/dev/null
 
 testrun:
 	bash ./bootstrap.sh
