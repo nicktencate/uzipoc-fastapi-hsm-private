@@ -7,7 +7,7 @@ import sys
 from typing import Union
 
 import yaml
-from fastapi import FastAPI, HTTPException, Header, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 from .modules.hsm import HSMModule
@@ -107,11 +107,13 @@ async def fallback_exception_handler(_: Request, exc: HSMError) -> JSONResponse:
         },
     )
 
-USERNAME="Mendel"
-PASSWORD="BugBlue"
+
+USERNAME = "Mendel"
+PASSWORD = "BugBlue"
+
 
 def is_authorized(request: Request):
-    if 'Authorization' not in request.headers:
+    if "Authorization" not in request.headers:
         return False
 
     username, password = request.headers["Authorization"].split(":")
@@ -120,12 +122,14 @@ def is_authorized(request: Request):
 
     return True
 
+
 @app.middleware("http")
 async def check_authorization(request: Request, call_next):
     if not is_authorized(request):
         raise HTTPException(401, detail="Not authorized")
 
     return await call_next(request)
+
 
 @app.get("/")
 async def root():
@@ -185,7 +189,7 @@ async def gendsa(module: Modules, slot: Slots, dsagen: DSAGenParam):
 
 
 @app.post("/hsm/{module}/{slot}/generate/aes", tags=["Key generation"])
-async def genaes(request: Request, module: Modules, slot: Slots, aesgen: AESGenParam):
+async def genaes(module: Modules, slot: Slots, aesgen: AESGenParam):
     doesexist(module, slot)
     return {"module": module, "slot": slot, "result": hsm.gen_aes(module, slot, aesgen)}
 
