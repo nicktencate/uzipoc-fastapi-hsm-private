@@ -3,6 +3,7 @@ from fastapi.exceptions import HTTPException
 import pytest
 
 
+@pytest.mark.enable_authorization_middleware
 def test_successful_authorization(client, module, slot):
     # Some random call that requires authentication:
     params = {"bits": 256, "label": "AESkey"}
@@ -13,6 +14,7 @@ def test_successful_authorization(client, module, slot):
     assert len(resp) > 0
 
 
+@pytest.mark.enable_authorization_middleware
 def test_unsuccessful_authorization(client, module, slot):
     # Some random call that requires authentication:
     params = {"bits": 256, "label": "AESkey"}

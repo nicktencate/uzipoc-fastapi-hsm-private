@@ -113,6 +113,7 @@ PASSWORD = "BugBlue"
 
 
 def is_authorized(request: Request):
+    print("Performs authorization")
     if "Authorization" not in request.headers:
         return False
 
