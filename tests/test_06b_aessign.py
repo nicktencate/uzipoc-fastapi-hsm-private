@@ -1,26 +1,12 @@
 from base64 import b64encode, b64decode
 
-import Crypto.Hash.SHA
-import Crypto.Hash.SHA224
-import Crypto.Hash.SHA256
-import Crypto.Hash.SHA384
-import Crypto.Hash.SHA512
-
-HasherToCryptoHash = {
-    "sha1": Crypto.Hash.SHA,
-    "sha224": Crypto.Hash.SHA224,
-    "sha256": Crypto.Hash.SHA256,
-    "sha384": Crypto.Hash.SHA384,
-    "sha512": Crypto.Hash.SHA512,
-}
-
 
 def _sign(client, module, slot, params):
     resp = client.post(f"/hsm/{module}/{slot}/sign", json=params).json()
     assert resp["module"] == module
     assert resp["slot"] == slot
-    signature = resp["result"]
-    assert len(b64decode(signature)) > 64, "Length error EC sign"
+    signature = resp["result"]["data"]
+    assert len(b64decode(signature)) == 16, "Length error DSA sign"
     return signature
 
 
@@ -36,17 +22,14 @@ def test_default(client, module, slot):
     message = b"Hallo wereld"
 
     params = {
-        "label": "ECkey",
-        "objtype": "PRIVATE_KEY",
+        "label": "AESkey",
         "data": b64encode(message).decode(),
-        "mechanism": "ECDSA",
+        "mechanism": "AES_CMAC",
     }
-
     params = {
-        "label": "ECkey",
-        "objtype": "PUBLIC_KEY",
+        "label": "AESkey",
         "data": b64encode(message).decode(),
-        "mechanism": "ECDSA",
         "signature": _sign(client, module, slot, params),
+        "mechanism": "AES_CMAC",
     }
     assert _verify(client, module, slot, params)

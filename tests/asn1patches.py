@@ -61,4 +61,3 @@ def switchcallback():
         savecallback
     )
     savecallback = newsavecallback
-    print(savecallback)

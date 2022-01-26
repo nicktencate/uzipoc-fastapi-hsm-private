@@ -15,7 +15,6 @@ def test_import(client, module, slot):
         "openssl-rsakey.pem",
     ]
     for file in files:
-        print(f"Importing: {file}")
         if os.path.isfile(f"tests/{file}"):
             with open(f"tests/{file}", "rb") as keyfile:
                 params = {

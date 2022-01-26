@@ -34,8 +34,8 @@ def _verify(client, module, slot, params):
     resp = client.post(f"/hsm/{module}/{slot}/verify", json=params).json()
     assert resp["module"] == module
     assert resp["slot"] == slot
-    signature = resp["result"]
-    return signature
+    verification = resp["result"]
+    return verification
 
 
 def test_default(client, module, slot):
@@ -143,6 +143,7 @@ def test_pkcshash(client, module, slot):
             "mechanism": mech,
             "signature": _sign(client, module, slot, params, bits),
         }
+        x = _verify(client, module, slot, params)
         assert _verify(client, module, slot, params)
 
 
