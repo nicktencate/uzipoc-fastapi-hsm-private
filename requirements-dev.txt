@@ -59,6 +59,8 @@ pyparsing==3.0.6
 pytest==6.2.5
     # via
     #   -r requirements-dev.in
+    #   pytest-mock
+pytest-mock==3.6.1
     #   pytest-cov
 pytest-cov==3.0.0
     # via -r requirements-dev.in

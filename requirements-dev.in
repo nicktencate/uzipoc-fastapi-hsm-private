@@ -8,5 +8,6 @@ types-orjson
 types-PyYAML
 requests
 pytest
-pycryptodome
+pytest-mock
 pytest-cov
+pycryptodome

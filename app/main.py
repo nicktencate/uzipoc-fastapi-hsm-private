@@ -4,10 +4,9 @@ This file contains the API setup to communicate with the configured HSM,
 defined using the FastAPI library.
 """
 from typing import Union
-from urllib.request import Request
 
 import yaml
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from .modules.hsm import HSMModule
@@ -107,6 +106,30 @@ async def fallback_exception_handler(_: Request, exc: HSMError) -> JSONResponse:
             "error_description": exc.message,
         },
     )
+
+
+USERNAME = "Mendel"
+PASSWORD = "BugBlue"
+
+
+def is_authorized(request: Request):
+    print("Performs authorization")
+    if "Authorization" not in request.headers:
+        return False
+
+    username, password = request.headers["Authorization"].split(":")
+    if not (username == USERNAME and password == PASSWORD):
+        return False
+
+    return True
+
+
+@app.middleware("http")
+async def check_authorization(request: Request, call_next):
+    if not is_authorized(request):
+        raise HTTPException(401, detail="Not authorized")
+
+    return await call_next(request)
 
 
 @app.get("/")
