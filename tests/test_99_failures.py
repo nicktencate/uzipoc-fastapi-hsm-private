@@ -2,7 +2,7 @@ from base64 import b64encode
 import asn1crypto.pem
 
 
-def test_root(client, _module, _slot):
+def test_root(client, module, slot):  # pylint: disable=unused-argument
     resp = client.get("/").json()
     assert resp == {
         "data": {
@@ -22,7 +22,7 @@ def test_root(client, _module, _slot):
     }
 
 
-def test_list(client, _module, _slot):
+def test_list(client, module, slot):  # pylint: disable=unused-argument
     resp = client.get("/hsm/list").json()
     assert resp == {"modules": ["softhsm"]}
 

@@ -76,6 +76,22 @@ class KeyXchangeKDF:  # pylint: disable=too-few-public-methods
         raise HSMError("Unsupported KDF")
 
 
+class KDFtoMech:  # pylint: disable=too-few-public-methods
+    @staticmethod
+    def map(method: HashMethod):
+        maps = {
+            pkcs11.KDF.NULL: "ECDSA",
+            pkcs11.KDF.SHA1: "ECDSA_SHA1",
+            pkcs11.KDF.SHA224: "ECDSA_SHA224",
+            pkcs11.KDF.SHA256: "ECDSA_SHA256",
+            pkcs11.KDF.SHA384: "ECDSA_SHA384",
+            pkcs11.KDF.SHA512: "ECDSA_SHA512",
+        }
+        if method in maps:
+            return maps[method]
+        raise HSMError("Unsupported KDF")
+
+
 class MethodMechanism:  # pylint: disable=too-few-public-methods
     @staticmethod
     def map(method: HashMethod):
@@ -411,11 +427,49 @@ class HSMModule:  # pylint: disable=too-many-public-methods
     #   data: ""
     #   size: aantal returned bits
     #   algorithm: optioneel: SHA256 ofzoiets
+    def _unsupported_hardware_derive(  # pylint: disable=too-many-arguments, too-many-locals
+        self, toexec, keytype, aessize, mechanism_param, module, template=None
+    ):
+        mechs = self._list_slot_mech(module)
+        kdf, sharedinfo, otherpub = mechanism_param
+        mech = KDFtoMech.map(kdf)
+        if mech in mechs:
+            return toexec(
+                keytype, aessize, mechanism_param=mechanism_param, template=template
+            )
+
+        hashmethod = mech[mech.index("_") + 1 :]
+        hasher = getattr(hashlib, hashmethod.lower())
+        sha = hasher()
+        deriv = toexec(
+            keytype,
+            aessize,
+            mechanism_param=(KeyXchangeKDF.map("NULL"), None, otherpub),
+            template=self.publictemplate,
+        )
+        output = b""
+        counter = 0
+        while len(output) < sha.digest_size:
+            counter += 1
+            sha = hasher()
+            sha.update(deriv[pkcs11.Attribute.VALUE])
+            sha.update(pack(">L", counter))
+            sha.update(sharedinfo)
+            output += sha.digest()
+        attrs = {
+            pkcs11.Attribute.KEY_TYPE: pkcs11.KeyType.AES,
+            pkcs11.Attribute.CLASS: pkcs11.ObjectClass.SECRET_KEY,
+            pkcs11.Attribute.VALUE: output[: int(aessize / 8)],
+        }
+        attrs.update(self.publictemplate)
+        return module.create_object(attrs)
+
     def _derive_key(self, so: SearchObject, toexec, data: bytes, module: str):
         # this seems counter intiutive, however if you want to return an AES key it should be extractable after
         # calculation
         otherpub = base64.b64decode(so.otherpub)
         sharedinfo = so.sharedinfo if hasattr(so, "sharedinfo") else None
+
         thekdf = (
             KeyXchangeKDF.map(so.algorithm)
             if hasattr(so, "algorithm") and so.algorithm
@@ -435,10 +489,12 @@ class HSMModule:  # pylint: disable=too-many-public-methods
                         "suppPubInfo": pack(">L", aessize),
                     }
                 ).dump()
-            newaes = toexec(
+            newaes = self._unsupported_hardware_derive(
+                toexec,
                 pkcs11.KeyType.AES,
                 aessize,
                 mechanism_param=(thekdf, sharedinfo, otherpub),
+                module=module,
             )
             if hasattr(so, "wrap") and so.wrap:
                 toexec_wrap = getattr(newaes, "wrap_key")
@@ -465,10 +521,12 @@ class HSMModule:  # pylint: disable=too-many-public-methods
                 )
         if hasattr(so, "size") and so.size:
             return base64.b64encode(
-                toexec(
+                self._unsupported_hardware_derive(
+                    toexec,
                     pkcs11.KeyType.AES,
                     so.size,
                     mechanism_param=(thekdf, sharedinfo, otherpub),
+                    module=module,
                     template=self.publictemplate,
                 )[pkcs11.Attribute.VALUE]
             )
@@ -694,6 +752,13 @@ class HSMModule:  # pylint: disable=too-many-public-methods
             # example: Mechanism.AES_CBC => AES_CBC
             str(x).split(".")[1] if "." in str(x) else "mechtype-" + hex(x)
             for x in self.modules[name][label].token.slot.get_mechanisms()
+        ]
+
+    def _list_slot_mech(self, module):  # pylint: disable=no-self-use
+        return [
+            # example: Mechanism.AES_CBC => AES_CBC
+            str(x).split(".")[1] if "." in str(x) else "mechtype-" + hex(x)
+            for x in module.token.slot.get_mechanisms()
         ]
 
     def list_slot(self, name, label):

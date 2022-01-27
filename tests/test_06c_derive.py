@@ -71,3 +71,31 @@ def test_default(client, module, slot):
     )
     assert len(shared2) == len(message)
     assert shared2 == message
+
+    params = {
+        "label": "ECkey",
+        "objtype": "PRIVATE_KEY",
+        "otherpub": b64encode(otherpub).decode(),
+        "size": 256,
+        "wrap": "aes256_wrap",
+        "data": b64encode(message).decode(),
+        "algorithm": "dhSinglePass-stdDH-sha256kdf-scheme",
+    }
+    shared1 = b64decode(
+        client.post(f"/hsm/{module}/{slot}/derive", json=params).json()["result"]
+    )
+    assert len(shared1) == (aessize / 8) + 8
+    params = {
+        "label": "ECkey2",
+        "objtype": "PRIVATE_KEY",
+        "otherpub": b64encode(thispub).decode(),
+        "size": 256,
+        "unwrap": "aes256_wrap",
+        "data": b64encode(shared1).decode(),
+        "algorithm": "dhSinglePass-stdDH-sha256kdf-scheme",
+    }
+    shared2 = b64decode(
+        client.post(f"/hsm/{module}/{slot}/derive", json=params).json()["result"]
+    )
+    assert len(shared2) == len(message)
+    assert shared2 == message
