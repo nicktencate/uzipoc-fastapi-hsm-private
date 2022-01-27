@@ -3,12 +3,11 @@
 This file contains the API setup to communicate with the configured HSM,
 defined using the FastAPI library.
 """
-import sys
 from typing import Union
 from urllib.request import Request
 
 import yaml
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
 from .modules.hsm import HSMModule
@@ -208,14 +207,14 @@ async def wrap(module: Modules, slot: Slots, so: WrapAESObject):
     return {"module": module, "slot": slot, "result": hsm.wrap(module, slot, so)}
 
 
-@app.post("/hsm/{module}/{slot}/derive", tags=["Key usage"])
-async def wrap(module: Modules, slot: Slots, so: DeriveObject):
-    return {"module": module, "slot": slot, "result": hsm.derive(module, slot, so)}
-
-
 @app.post("/hsm/{module}/{slot}/unwrap", tags=["Key usage"])
 async def unwrap(module: Modules, slot: Slots, so: WrapAESObject):
     return {"module": module, "slot": slot, "result": hsm.unwrap(module, slot, so)}
+
+
+@app.post("/hsm/{module}/{slot}/derive", tags=["Key usage"])
+async def derive(module: Modules, slot: Slots, so: DeriveObject):
+    return {"module": module, "slot": slot, "result": hsm.derive(module, slot, so)}
 
 
 @app.post("/hsm/{module}/{slot}/import", tags=["Import"])

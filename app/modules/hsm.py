@@ -73,6 +73,7 @@ class KeyXchangeKDF:  # pylint: disable=too-few-public-methods
         }
         if method in maps:
             return maps[method]
+        raise HSMError("Unsupported KDF")
 
 
 class MethodMechanism:  # pylint: disable=too-few-public-methods
@@ -87,6 +88,7 @@ class MethodMechanism:  # pylint: disable=too-few-public-methods
         }
         if method in maps:
             return maps[method]
+        raise HSMError("Unsupported Method")
 
 
 class MethodMGF:  # pylint: disable=too-few-public-methods
@@ -101,6 +103,7 @@ class MethodMGF:  # pylint: disable=too-few-public-methods
         }
         if method in maps:
             return maps[method]
+        raise HSMError("Unsupported MFG")
 
 
 class MethodSize:  # pylint: disable=too-few-public-methods
@@ -115,6 +118,7 @@ class MethodSize:  # pylint: disable=too-few-public-methods
         }
         if method in maps:
             return maps[method]
+        raise HSMError("Unsupported Method")
 
 
 # All public are public?
@@ -671,7 +675,9 @@ class HSMModule:  # pylint: disable=too-many-public-methods
                 retdata = toexec(data)
                 return base64.b64encode(retdata)
             except RuntimeError as error:
-                raise HSMError("Failure at executing function: " + str(type(error)))
+                raise HSMError(
+                    "Failure at executing function: " + str(type(error))
+                ) from error
             except Exception as error:
                 raise error
                 # raise HSMError("HSM error: " + str(error))

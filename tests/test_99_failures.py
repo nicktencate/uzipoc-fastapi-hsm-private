@@ -1,9 +1,9 @@
-from base64 import b64encode, b64decode
+from base64 import b64encode
 import asn1crypto.pem
 
 
-def test_root(client, module, slot):
-    resp = client.get(f"/").json()
+def test_root(client, _module, _slot):
+    resp = client.get("/").json()
     assert resp == {
         "data": {
             "ca": {"ca": "clients/ca.pem", "crl": "clients/crl.pem"},
@@ -22,8 +22,8 @@ def test_root(client, module, slot):
     }
 
 
-def test_list(client, module, slot):
-    resp = client.get(f"/hsm/list").json()
+def test_list(client, _module, _slot):
+    resp = client.get("/hsm/list").json()
     assert resp == {"modules": ["softhsm"]}
 
 
@@ -32,17 +32,6 @@ def test_nomodule(client, module, slot):
     assert resp.status_code == 422
     resp = client.get(f"/hsm/{module}/no-{slot}")
     assert resp.status_code == 422
-
-
-# def test_invalidop(client, module, slot):
-#    params = {
-#        "label": "RSAkey",
-#        "objtype": "PRIVATE_KEY",
-#        "data": b64encode(b'Failure').decode(),
-#        "mechanism": "ECDSA",
-#    }
-#    resp = client.post(f"/hsm/{module}/{slot}/sign", json=params).json()
-#    assert resp == {'error': 'Unprocessible HSM Request', 'error_description': 'HSM error: Invalid shape in axis 0: 0.'}
 
 
 def test_nosuchkey(client, module, slot):
@@ -143,6 +132,7 @@ def test_ec_without_mech(client, module, slot):
         "error_description": "Failure at executing function: <class 'pkcs11.exceptions.MechanismInvalid'>",
     }
 
+
 def test_derive_no_args(client, module, slot):
 
     aessize = 256
@@ -165,4 +155,3 @@ def test_derive_no_args(client, module, slot):
         "error": "Unprocessible HSM Request",
         "error_description": "Not enought arguments",
     }
-

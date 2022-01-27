@@ -1,5 +1,4 @@
 from base64 import b64encode, b64decode
-import codecs
 import asn1crypto.pem
 import asn1crypto.keys
 

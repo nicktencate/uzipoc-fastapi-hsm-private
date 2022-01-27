@@ -143,7 +143,6 @@ def test_pkcshash(client, module, slot):
             "mechanism": mech,
             "signature": _sign(client, module, slot, params, bits),
         }
-        x = _verify(client, module, slot, params)
         assert _verify(client, module, slot, params)
 
 
