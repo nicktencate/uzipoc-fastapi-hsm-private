@@ -8,13 +8,15 @@ asn1crypto.cms.CMSAttributeType._map[  # pylint: disable=protected-access
 
 
 extrakeai = {
-  "1.3.133.16.840.63.0.2": "dhSinglePass-stdDH-sha1kdf-scheme",
-  "1.3.132.1.11.0": "dhSinglePass-stdDH-sha224kdf-scheme",
-  "1.3.132.1.11.1": "dhSinglePass-stdDH-sha256kdf-scheme",
-  "1.3.132.1.11.2": "dhSinglePass-stdDH-sha384kdf-scheme",
-  "1.3.132.1.11.3": "dhSinglePass-stdDH-sha512kdf-scheme",
+    "1.3.133.16.840.63.0.2": "dhSinglePass-stdDH-sha1kdf-scheme",
+    "1.3.132.1.11.0": "dhSinglePass-stdDH-sha224kdf-scheme",
+    "1.3.132.1.11.1": "dhSinglePass-stdDH-sha256kdf-scheme",
+    "1.3.132.1.11.2": "dhSinglePass-stdDH-sha384kdf-scheme",
+    "1.3.132.1.11.3": "dhSinglePass-stdDH-sha512kdf-scheme",
 }
-asn1crypto.cms.KeyEncryptionAlgorithmId._map.update(extrakeai)   # pylint: disable=protected-access
+asn1crypto.cms.KeyEncryptionAlgorithmId._map.update(  # pylint: disable=protected-access
+    extrakeai
+)
 
 extraea = {
     "dhSinglePass-stdDH-sha1kdf-scheme": asn1crypto.algos.EncryptionAlgorithm,
@@ -23,7 +25,9 @@ extraea = {
     "dhSinglePass-stdDH-sha384kdf-scheme": asn1crypto.algos.EncryptionAlgorithm,
     "dhSinglePass-stdDH-sha512kdf-scheme": asn1crypto.algos.EncryptionAlgorithm,
 }
-asn1crypto.cms.KeyEncryptionAlgorithm._oid_specs.update(extraea)   # pylint: disable=protected-access
+asn1crypto.cms.KeyEncryptionAlgorithm._oid_specs.update(  # pylint: disable=protected-access
+    extraea
+)
 
 
 class SMIMECapability(asn1crypto.core.SequenceOf):
@@ -49,13 +53,19 @@ extrapai = {
     "1.3.101.112": "ed25519",
     "1.3.101.113": "ed448",
 }
-asn1crypto.keys.PublicKeyAlgorithmId._map.update(extrapai)  # pylint: disable=protected-access
+asn1crypto.keys.PublicKeyAlgorithmId._map.update(  # pylint: disable=protected-access
+    extrapai
+)
 extrasdai = {
     "1.3.101.112": "ed25519",
     "1.3.101.113": "ed448",
 }
-asn1crypto.algos.SignedDigestAlgorithmId._map.update(extrasdai)  # pylint: disable=protected-access
-asn1crypto.algos.SignedDigestAlgorithmId._reverse_map.update({extrasdai[x]:x for x in extrasdai.keys()})  # pylint: disable=protected-access
+asn1crypto.algos.SignedDigestAlgorithmId._map.update(  # pylint: disable=protected-access
+    extrasdai
+)
+asn1crypto.algos.SignedDigestAlgorithmId._reverse_map.update(  # pylint: disable=protected-access
+    {y: x for x, y in extrasdai.items()}
+)
 
 savecallback = None
 
