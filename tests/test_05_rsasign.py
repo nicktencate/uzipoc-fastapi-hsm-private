@@ -4,7 +4,7 @@ import hashlib
 import asn1crypto.tsp
 
 from Crypto.PublicKey import RSA
-from Crypto.Signature import PKCS1_PSS
+from Crypto.Signature import pss
 from Crypto.Util import number
 import Crypto.Hash.SHA
 import Crypto.Hash.SHA224
@@ -186,16 +186,16 @@ def test_pss(client, module, slot):
         )
         CryptoHash = HasherToCryptoHash[hashmethod]
         assert (
-            PKCS1_PSS.EMSA_PSS_VERIFY(
+            pss._EMSA_PSS_VERIFY(
                 CryptoHash.new(message),
                 psig,
                 bits - 1,
-                lambda x, y: PKCS1_PSS.MGF1(
+                lambda x, y: pss.MGF1(
                     x, y, CryptoHash.new()  # pylint: disable=cell-var-from-loop
                 ),
                 CryptoHash.digest_size,
             )
-            is True
+            is None
         ), "Non-HSM verify error"
 
 
@@ -256,11 +256,11 @@ def test_pss_hashext(client, module, slot):
         hashmethod = mech[: mech.index("_")].lower()
         CryptoHash = HasherToCryptoHash[hashmethod]
         with open("/dev/urandom", "rb") as randfile:
-            rawencoded = PKCS1_PSS.EMSA_PSS_ENCODE(
+            rawencoded = pss._EMSA_PSS_ENCODE(
                 CryptoHash.new(message),
                 bits - 1,
                 randfile.read,
-                lambda x, y: PKCS1_PSS.MGF1(
+                lambda x, y: pss.MGF1(
                     x, y, CryptoHash.new()  # pylint: disable=cell-var-from-loop
                 ),
                 CryptoHash.digest_size,

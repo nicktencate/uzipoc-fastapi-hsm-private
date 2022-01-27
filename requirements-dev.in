@@ -7,5 +7,5 @@ types-ujson
 types-orjson
 types-PyYAML
 requests
-pycrypto
 pytest
+pycryptodome
