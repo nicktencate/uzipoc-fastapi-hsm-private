@@ -186,7 +186,7 @@ def test_pss(client, module, slot):
         )
         CryptoHash = HasherToCryptoHash[hashmethod]
         assert (
-            pss._EMSA_PSS_VERIFY(
+            pss._EMSA_PSS_VERIFY(  # pylint: disable=protected-access
                 CryptoHash.new(message),
                 psig,
                 bits - 1,
@@ -256,7 +256,7 @@ def test_pss_hashext(client, module, slot):
         hashmethod = mech[: mech.index("_")].lower()
         CryptoHash = HasherToCryptoHash[hashmethod]
         with open("/dev/urandom", "rb") as randfile:
-            rawencoded = pss._EMSA_PSS_ENCODE(
+            rawencoded = pss._EMSA_PSS_ENCODE(  # pylint: disable=protected-access
                 CryptoHash.new(message),
                 bits - 1,
                 randfile.read,
