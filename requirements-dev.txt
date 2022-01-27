@@ -50,8 +50,6 @@ pluggy==1.0.0
     # via pytest
 py==1.11.0
     # via pytest
-pycryptodome==3.13.0
-    # via -r requirements-dev.in
 pylint==2.12.2
     # via -r requirements-dev.in
 pyparsing==3.0.6
@@ -59,10 +57,11 @@ pyparsing==3.0.6
 pytest==6.2.5
     # via
     #   -r requirements-dev.in
-    #   pytest-mock
-pytest-mock==3.6.1
     #   pytest-cov
+    #   pytest-mock
 pytest-cov==3.0.0
+    # via -r requirements-dev.in
+pytest-mock==3.6.1
     # via -r requirements-dev.in
 requests==2.27.1
     # via -r requirements-dev.in

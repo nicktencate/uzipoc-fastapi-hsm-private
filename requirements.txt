@@ -34,6 +34,8 @@ pip-tools==6.4.0
     # via -r requirements.in
 priority==2.0.0
     # via hypercorn
+pycryptodome==3.13.0
+    # via -r requirements.in
 pydantic==1.9.0
     # via
     #   -r requirements.in

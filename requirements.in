@@ -7,6 +7,7 @@ hypercorn
 fastapi
 python-pkcs11
 pyyaml
+pycryptodome
 
 ## Fixed for compatibility for development requirements
 tomli==1.1.0
