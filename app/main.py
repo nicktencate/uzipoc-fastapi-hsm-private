@@ -3,11 +3,10 @@
 This file contains the API setup to communicate with the configured HSM,
 defined using the FastAPI library.
 """
-import sys
 from typing import Union
 
 import yaml
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from .modules.hsm import HSMModule
@@ -27,6 +26,7 @@ from .modules.model import (
     SignAESObject,
     ImportObject,
     WrapAESObject,
+    DeriveObject,
 )
 
 with open("conf.yml", "r", encoding="utf-8") as yamlfile:
@@ -142,23 +142,15 @@ async def hsmlist():
     return {"modules": hsm.hsmlist()}
 
 
-def doesexist(module, slot):
-    if not hsm.is_module(module):
-        raise HTTPException(status_code=404, detail="No such module")
-    if not hsm.is_slot(module, slot):
-        raise HTTPException(status_code=404, detail="No such slot")
-
-
 @app.get("/hsm/{module}", tags=["Listing"])
 async def modlist(module: Modules):
-    if not hsm.is_module(module):
-        return {"error": 1, "message": "No such module"}
+    # if not hsm.is_module(module):
+    #    return {"error": 1, "message": "No such module"}
     return {"module": module, "slots": hsm.list_slots(module)}
 
 
 @app.get("/hsm/{module}/{slot}", tags=["Listing"])
 async def slotlist(module: Modules, slot: Slots):
-    doesexist(module, slot)
     return {
         "module": module,
         "slot": slot,
@@ -169,7 +161,6 @@ async def slotlist(module: Modules, slot: Slots):
 
 @app.post("/hsm/{module}/{slot}", tags=["Listing"])
 async def getobjdetails(module: Modules, slot: Slots, so: SearchObject):
-    doesexist(module, slot)
     return {
         "module": module,
         "slot": slot,
@@ -179,32 +170,27 @@ async def getobjdetails(module: Modules, slot: Slots, so: SearchObject):
 
 @app.post("/hsm/{module}/{slot}/generate/rsa", tags=["Key generation"])
 async def genrsa(module: Modules, slot: Slots, rsagen: RSAGenParam):
-    doesexist(module, slot)
     return {"module": module, "slot": slot, "result": hsm.gen_rsa(module, slot, rsagen)}
 
 
 @app.post("/hsm/{module}/{slot}/generate/dsa", tags=["Key generation"])
 async def gendsa(module: Modules, slot: Slots, dsagen: DSAGenParam):
-    doesexist(module, slot)
     return {"module": module, "slot": slot, "result": hsm.gen_dsa(module, slot, dsagen)}
 
 
 @app.post("/hsm/{module}/{slot}/generate/aes", tags=["Key generation"])
 async def genaes(module: Modules, slot: Slots, aesgen: AESGenParam):
-    doesexist(module, slot)
     return {"module": module, "slot": slot, "result": hsm.gen_aes(module, slot, aesgen)}
 
 
 # TODO: This endpoint is overwritten by the endpoint below (line: 122)
 @app.post("/hsm/{module}/{slot}/generate/ec", tags=["Key generation"])
 async def genec(module: Modules, slot: Slots, ecgen: ECGenParam):
-    doesexist(module, slot)
     return {"module": module, "slot": slot, "result": hsm.gen_ec(module, slot, ecgen)}
 
 
 @app.post("/hsm/{module}/{slot}/generate/edwards", tags=["Key generation"])
 async def genedwards(module: Modules, slot: Slots, ecgen: ECGenParam):
-    doesexist(module, slot)
     return {
         "module": module,
         "slot": slot,
@@ -214,25 +200,21 @@ async def genedwards(module: Modules, slot: Slots, ecgen: ECGenParam):
 
 @app.post("/hsm/{module}/{slot}/destroy", tags=["Object removal"])
 async def destroyobj(module: Modules, slot: Slots, so: SearchObject):
-    doesexist(module, slot)
     return {"module": module, "slot": slot, "result": hsm.destroyobj(module, slot, so)}
 
 
 @app.post("/hsm/{module}/{slot}/encrypt", tags=["Key usage"])
 async def encrypt(module: Modules, slot: Slots, so: DecryptEncryptObject):
-    doesexist(module, slot)
     return {"module": module, "slot": slot, "result": hsm.encrypt(module, slot, so)}
 
 
 @app.post("/hsm/{module}/{slot}/decrypt", tags=["Key usage"])
 async def decrypt(module: Modules, slot: Slots, so: DecryptEncryptObject):
-    doesexist(module, slot)
     return {"module": module, "slot": slot, "result": hsm.decrypt(module, slot, so)}
 
 
 @app.post("/hsm/{module}/{slot}/sign", tags=["Key usage"])
 async def sign(module: Modules, slot: Slots, so: Union[SignRSAObject, SignAESObject]):
-    doesexist(module, slot)
     return {"module": module, "slot": slot, "result": hsm.sign(module, slot, so)}
 
 
@@ -240,32 +222,28 @@ async def sign(module: Modules, slot: Slots, so: Union[SignRSAObject, SignAESObj
 async def verify(
     module: Modules, slot: Slots, so: Union[VerifyRSAObject, VerifyAESObject]
 ):
-    doesexist(module, slot)
     return {"module": module, "slot": slot, "result": hsm.verify(module, slot, so)}
 
 
 @app.post("/hsm/{module}/{slot}/wrap", tags=["Key usage"])
 async def wrap(module: Modules, slot: Slots, so: WrapAESObject):
-    doesexist(module, slot)
     return {"module": module, "slot": slot, "result": hsm.wrap(module, slot, so)}
 
 
 @app.post("/hsm/{module}/{slot}/unwrap", tags=["Key usage"])
 async def unwrap(module: Modules, slot: Slots, so: WrapAESObject):
-    doesexist(module, slot)
     return {"module": module, "slot": slot, "result": hsm.unwrap(module, slot, so)}
+
+
+@app.post("/hsm/{module}/{slot}/derive", tags=["Key usage"])
+async def derive(module: Modules, slot: Slots, so: DeriveObject):
+    return {"module": module, "slot": slot, "result": hsm.derive(module, slot, so)}
 
 
 @app.post("/hsm/{module}/{slot}/import", tags=["Import"])
 async def importdata(module: Modules, slot: Slots, so: ImportObject):
-    doesexist(module, slot)
     return {
         "module": module,
         "slot": slot,
         "objects": hsm.importdata(module, slot, so),
     }
-
-
-@app.get("/stopandexit", tags=["Development only"])
-async def stopandexit():
-    sys.exit()

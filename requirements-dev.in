@@ -7,6 +7,7 @@ types-ujson
 types-orjson
 types-PyYAML
 requests
-pycrypto
 pytest
 pytest-mock
+pytest-cov
+pycryptodome

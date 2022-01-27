@@ -7,6 +7,29 @@ asn1crypto.cms.CMSAttributeType._map[  # pylint: disable=protected-access
 ] = "smimeCapabilities"
 
 
+extrakeai = {
+    "1.3.133.16.840.63.0.2": "dhSinglePass-stdDH-sha1kdf-scheme",
+    "1.3.132.1.11.0": "dhSinglePass-stdDH-sha224kdf-scheme",
+    "1.3.132.1.11.1": "dhSinglePass-stdDH-sha256kdf-scheme",
+    "1.3.132.1.11.2": "dhSinglePass-stdDH-sha384kdf-scheme",
+    "1.3.132.1.11.3": "dhSinglePass-stdDH-sha512kdf-scheme",
+}
+asn1crypto.cms.KeyEncryptionAlgorithmId._map.update(  # pylint: disable=protected-access
+    extrakeai
+)
+
+extraea = {
+    "dhSinglePass-stdDH-sha1kdf-scheme": asn1crypto.algos.EncryptionAlgorithm,
+    "dhSinglePass-stdDH-sha224kdf-scheme": asn1crypto.algos.EncryptionAlgorithm,
+    "dhSinglePass-stdDH-sha256kdf-scheme": asn1crypto.algos.EncryptionAlgorithm,
+    "dhSinglePass-stdDH-sha384kdf-scheme": asn1crypto.algos.EncryptionAlgorithm,
+    "dhSinglePass-stdDH-sha512kdf-scheme": asn1crypto.algos.EncryptionAlgorithm,
+}
+asn1crypto.cms.KeyEncryptionAlgorithm._oid_specs.update(  # pylint: disable=protected-access
+    extraea
+)
+
+
 class SMIMECapability(asn1crypto.core.SequenceOf):
     _child_spec = asn1crypto.algos.EncryptionAlgorithm
 
@@ -24,30 +47,25 @@ asn1crypto.algos.EncryptionAlgorithm._oid_specs[  # pylint: disable=protected-ac
 ] = asn1crypto.core.Integer
 
 # default asn1crypto does not know about. development on github version knows
-asn1crypto.keys.PublicKeyAlgorithmId._map[  # pylint: disable=protected-access
-    "1.3.101.110"
-] = "x25519"
-asn1crypto.keys.PublicKeyAlgorithmId._map[  # pylint: disable=protected-access
-    "1.3.101.111"
-] = "x448"
-asn1crypto.keys.PublicKeyAlgorithmId._map[  # pylint: disable=protected-access
-    "1.3.101.112"
-] = "ed25519"
-asn1crypto.keys.PublicKeyAlgorithmId._map[  # pylint: disable=protected-access
-    "1.3.101.113"
-] = "ed448"
-asn1crypto.algos.SignedDigestAlgorithmId._map[  # pylint: disable=protected-access
-    "1.3.101.112"
-] = "ed25519"
-asn1crypto.algos.SignedDigestAlgorithmId._map[  # pylint: disable=protected-access
-    "1.3.101.113"
-] = "ed448"
-asn1crypto.algos.SignedDigestAlgorithmId._reverse_map[  # pylint: disable=protected-access
-    "ed25519"
-] = "1.3.101.112"
-asn1crypto.algos.SignedDigestAlgorithmId._reverse_map[  # pylint: disable=protected-access
-    "ed448"
-] = "1.3.101.113"
+extrapai = {
+    "1.3.101.110": "x25519",
+    "1.3.101.111": "x448",
+    "1.3.101.112": "ed25519",
+    "1.3.101.113": "ed448",
+}
+asn1crypto.keys.PublicKeyAlgorithmId._map.update(  # pylint: disable=protected-access
+    extrapai
+)
+extrasdai = {
+    "1.3.101.112": "ed25519",
+    "1.3.101.113": "ed448",
+}
+asn1crypto.algos.SignedDigestAlgorithmId._map.update(  # pylint: disable=protected-access
+    extrasdai
+)
+asn1crypto.algos.SignedDigestAlgorithmId._reverse_map.update(  # pylint: disable=protected-access
+    {y: x for x, y in extrasdai.items()}
+)
 
 savecallback = None
 
@@ -61,4 +79,3 @@ def switchcallback():
         savecallback
     )
     savecallback = newsavecallback
-    print(savecallback)

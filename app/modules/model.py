@@ -49,11 +49,18 @@ class AESbits(int, Enum):
 
 
 class HashMethod(str, Enum):
+    NULL = "NULL"
+    MD5 = "md5"
     SHA1 = "sha1"
     SHA224 = "sha224"
     SHA256 = "sha256"
     SHA384 = "sha384"
     SHA512 = "sha512"
+    DHSHA1 = "dhSinglePass-stdDH-sha1kdf-scheme"
+    DHSHA224 = "dhSinglePass-stdDH-sha224kdf-scheme"
+    DHSHA256 = "dhSinglePass-stdDH-sha256kdf-scheme"
+    DHSHA384 = "dhSinglePass-stdDH-sha384kdf-scheme"
+    DHSHA512 = "dhSinglePass-stdDH-sha512kdf-scheme"
 
 
 class SearchObjectEnum(str, Enum):
@@ -62,6 +69,15 @@ class SearchObjectEnum(str, Enum):
     SECRET = "SECRET_KEY"
     DATA = "DATA"
     CERTIFICATE = "CERTIFICATE"
+
+
+class WrapObject(str, Enum):
+    AES128W = "aes128_wrap"
+    AES192W = "aes192_wrap"
+    AES256W = "aes256_wrap"
+    AES128 = "aes128"
+    AES192 = "aes192"
+    AES125 = "aes256"
 
 
 class SearchObject(BaseModel):  # pylint: disable=too-few-public-methods
@@ -103,13 +119,23 @@ class SignObject(SearchObject):  # pylint: disable=too-few-public-methods
     mechanism: Optional[str] = None
 
 
+class DeriveObject(SearchObject):  # pylint: disable=too-few-public-methods
+    wrap: Optional[WrapObject] = None
+    unwrap: Optional[WrapObject] = None
+    sharedinfo: Optional[str] = None
+    algorithm: Optional[HashMethod] = None
+    otherpub: Optional[str] = None
+    size: Optional[int] = None
+    data: Optional[str] = None
+
+
 class SignRSAObject(SignObject):  # pylint: disable=too-few-public-methods
     hashmethod: Optional[HashMethod] = None
 
 
 class SignAESObject(SignObject):  # pylint: disable=too-few-public-methods
-    # We don't let users supply their own IV.
-    pass
+    mechanism: Optional[str] = None
+    hashmethod: Optional[HashMethod] = None
 
 
 class WrapAESObject(SignObject):  # pylint: disable=too-few-public-methods

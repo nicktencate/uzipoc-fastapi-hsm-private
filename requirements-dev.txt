@@ -18,6 +18,8 @@ click==8.0.3
     # via
     #   -c requirements.txt
     #   black
+coverage[toml]==6.3
+    # via pytest-cov
 idna==3.3
     # via
     #   -c requirements.txt
@@ -48,7 +50,7 @@ pluggy==1.0.0
     # via pytest
 py==1.11.0
     # via pytest
-pycrypto==2.6.1
+pycryptodome==3.13.0
     # via -r requirements-dev.in
 pylint==2.12.2
     # via -r requirements-dev.in
@@ -59,6 +61,8 @@ pytest==6.2.5
     #   -r requirements-dev.in
     #   pytest-mock
 pytest-mock==3.6.1
+    #   pytest-cov
+pytest-cov==3.0.0
     # via -r requirements-dev.in
 requests==2.27.1
     # via -r requirements-dev.in
@@ -71,6 +75,7 @@ tomli==1.1.0
     # via
     #   -c requirements.txt
     #   black
+    #   coverage
     #   mypy
 types-orjson==3.6.2
     # via -r requirements-dev.in
