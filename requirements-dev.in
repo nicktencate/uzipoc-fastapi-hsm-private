@@ -9,3 +9,4 @@ types-PyYAML
 requests
 pytest
 pycryptodome
+pytest-cov

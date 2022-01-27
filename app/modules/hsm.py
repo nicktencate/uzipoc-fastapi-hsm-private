@@ -54,87 +54,68 @@ class SharedInfo(asn1crypto.core.Sequence):
         ("suppPubInfo", asn1crypto.core.OctetString, {"explicit": 2}),
     ]
 
+class Mapper:
+    maps = {}
+    def map(self, method):
+        if method in self.maps:
+            return self.maps[method]
+        raise HSMError("Value error")
 
-class KeyXchangeKDF:  # pylint: disable=too-few-public-methods
-    @staticmethod
-    def map(method: HashMethod):
-        maps = {
-            "NULL": pkcs11.KDF.NULL,
-            "dhSinglePass-stdDH-sha1kdf-scheme": pkcs11.KDF.SHA1,
-            "dhSinglePass-stdDH-sha224kdf-scheme": pkcs11.KDF.SHA224,
-            "dhSinglePass-stdDH-sha256kdf-scheme": pkcs11.KDF.SHA256,
-            "dhSinglePass-stdDH-sha384kdf-scheme": pkcs11.KDF.SHA384,
-            "dhSinglePass-stdDH-sha512kdf-scheme": pkcs11.KDF.SHA512,
-            "sha1": pkcs11.KDF.SHA1,
-            "sha224": pkcs11.KDF.SHA224,
-            "sha256": pkcs11.KDF.SHA256,
-            "sha384": pkcs11.KDF.SHA384,
-            "sha512": pkcs11.KDF.SHA512,
-        }
-        if method in maps:
-            return maps[method]
-        raise HSMError("Unsupported KDF")
-
-
-class KDFtoMech:  # pylint: disable=too-few-public-methods
-    @staticmethod
-    def map(method: HashMethod):
-        maps = {
-            pkcs11.KDF.NULL: "ECDSA",
-            pkcs11.KDF.SHA1: "ECDSA_SHA1",
-            pkcs11.KDF.SHA224: "ECDSA_SHA224",
-            pkcs11.KDF.SHA256: "ECDSA_SHA256",
-            pkcs11.KDF.SHA384: "ECDSA_SHA384",
-            pkcs11.KDF.SHA512: "ECDSA_SHA512",
-        }
-        if method in maps:
-            return maps[method]
-        raise HSMError("Unsupported KDF")
+class KeyXchangeKDF(Mapper):  # pylint: disable=too-few-public-methods
+    maps = {
+        "NULL": pkcs11.KDF.NULL,
+        "dhSinglePass-stdDH-sha1kdf-scheme": pkcs11.KDF.SHA1,
+        "dhSinglePass-stdDH-sha224kdf-scheme": pkcs11.KDF.SHA224,
+        "dhSinglePass-stdDH-sha256kdf-scheme": pkcs11.KDF.SHA256,
+        "dhSinglePass-stdDH-sha384kdf-scheme": pkcs11.KDF.SHA384,
+        "dhSinglePass-stdDH-sha512kdf-scheme": pkcs11.KDF.SHA512,
+        "sha1": pkcs11.KDF.SHA1,
+        "sha224": pkcs11.KDF.SHA224,
+        "sha256": pkcs11.KDF.SHA256,
+        "sha384": pkcs11.KDF.SHA384,
+        "sha512": pkcs11.KDF.SHA512,
+    }
 
 
-class MethodMechanism:  # pylint: disable=too-few-public-methods
-    @staticmethod
-    def map(method: HashMethod):
-        maps = {
-            HashMethod.SHA1: pkcs11.Mechanism.SHA_1,
-            HashMethod.SHA224: pkcs11.Mechanism.SHA224,
-            HashMethod.SHA256: pkcs11.Mechanism.SHA256,
-            HashMethod.SHA384: pkcs11.Mechanism.SHA384,
-            HashMethod.SHA512: pkcs11.Mechanism.SHA512,
-        }
-        if method in maps:
-            return maps[method]
-        raise HSMError("Unsupported Method")
+class KDFtoMech(Mapper):  # pylint: disable=too-few-public-methods
+    maps = {
+        pkcs11.KDF.NULL: "ECDSA",
+        pkcs11.KDF.SHA1: "ECDSA_SHA1",
+        pkcs11.KDF.SHA224: "ECDSA_SHA224",
+        pkcs11.KDF.SHA256: "ECDSA_SHA256",
+        pkcs11.KDF.SHA384: "ECDSA_SHA384",
+        pkcs11.KDF.SHA512: "ECDSA_SHA512",
+    }
 
 
-class MethodMGF:  # pylint: disable=too-few-public-methods
-    @staticmethod
-    def map(method: HashMethod):
-        maps = {
-            HashMethod.SHA1: pkcs11.MGF.SHA1,
-            HashMethod.SHA224: pkcs11.MGF.SHA224,
-            HashMethod.SHA256: pkcs11.MGF.SHA256,
-            HashMethod.SHA384: pkcs11.MGF.SHA384,
-            HashMethod.SHA512: pkcs11.MGF.SHA512,
-        }
-        if method in maps:
-            return maps[method]
-        raise HSMError("Unsupported MFG")
+class MethodMechanism(Mapper):  # pylint: disable=too-few-public-methods
+    maps = {
+        HashMethod.SHA1: pkcs11.Mechanism.SHA_1,
+        HashMethod.SHA224: pkcs11.Mechanism.SHA224,
+        HashMethod.SHA256: pkcs11.Mechanism.SHA256,
+        HashMethod.SHA384: pkcs11.Mechanism.SHA384,
+        HashMethod.SHA512: pkcs11.Mechanism.SHA512,
+    }
 
 
-class MethodSize:  # pylint: disable=too-few-public-methods
-    @staticmethod
-    def map(method: HashMethod):
-        maps = {
-            HashMethod.SHA1: hashlib.sha1().digest_size,
-            HashMethod.SHA224: hashlib.sha224().digest_size,
-            HashMethod.SHA256: hashlib.sha256().digest_size,
-            HashMethod.SHA384: hashlib.sha384().digest_size,
-            HashMethod.SHA512: hashlib.sha512().digest_size,
-        }
-        if method in maps:
-            return maps[method]
-        raise HSMError("Unsupported Method")
+class MethodMGF(Mapper):  # pylint: disable=too-few-public-methods
+    maps = {
+        HashMethod.SHA1: pkcs11.MGF.SHA1,
+        HashMethod.SHA224: pkcs11.MGF.SHA224,
+        HashMethod.SHA256: pkcs11.MGF.SHA256,
+        HashMethod.SHA384: pkcs11.MGF.SHA384,
+        HashMethod.SHA512: pkcs11.MGF.SHA512,
+    }
+
+
+class MethodSize(Mapper):  # pylint: disable=too-few-public-methods
+    maps = {
+        HashMethod.SHA1: hashlib.sha1().digest_size,
+        HashMethod.SHA224: hashlib.sha224().digest_size,
+        HashMethod.SHA256: hashlib.sha256().digest_size,
+        HashMethod.SHA384: hashlib.sha384().digest_size,
+        HashMethod.SHA512: hashlib.sha512().digest_size,
+    }
 
 
 # All public are public?
@@ -432,7 +413,7 @@ class HSMModule:  # pylint: disable=too-many-public-methods
     ):
         mechs = self._list_slot_mech(module)
         kdf, sharedinfo, otherpub = mechanism_param
-        mech = KDFtoMech.map(kdf)
+        mech = KDFtoMech().map(kdf)
         if mech in mechs:
             return toexec(
                 keytype, aessize, mechanism_param=mechanism_param, template=template
@@ -444,7 +425,7 @@ class HSMModule:  # pylint: disable=too-many-public-methods
         deriv = toexec(
             keytype,
             aessize,
-            mechanism_param=(KeyXchangeKDF.map("NULL"), None, otherpub),
+            mechanism_param=(KeyXchangeKDF().map("NULL"), None, otherpub),
             template=self.publictemplate,
         )
         output = b""
@@ -471,7 +452,7 @@ class HSMModule:  # pylint: disable=too-many-public-methods
         sharedinfo = so.sharedinfo if hasattr(so, "sharedinfo") else None
 
         thekdf = (
-            KeyXchangeKDF.map(so.algorithm)
+            KeyXchangeKDF().map(so.algorithm)
             if hasattr(so, "algorithm") and so.algorithm
             else pkcs11.KDF.NULL
         )
@@ -604,15 +585,15 @@ class HSMModule:  # pylint: disable=too-many-public-methods
             or (so.mechanism and so.mechanism.endswith("RSA_PKCS_PSS"))
         ) and so.hashmethod:
             if (
-                MethodSize.map(so.hashmethod) is not len(data)
+                MethodSize().map(so.hashmethod) is not len(data)
                 and thefunc in ["verify", "sign"]
                 and so.mechanism in ["RSA_PKCS_OAEP", "RSA_PKCS_PSS"]
             ):
                 raise HSMError("Data length does not match hash method")
             mechanism_param = (
-                MethodMechanism.map(so.hashmethod),
-                MethodMGF.map(so.hashmethod),
-                MethodSize.map(so.hashmethod)
+                MethodMechanism().map(so.hashmethod),
+                MethodMGF().map(so.hashmethod),
+                MethodSize().map(so.hashmethod)
                 if thefunc in ["verify", "sign"]
                 else None,
             )
