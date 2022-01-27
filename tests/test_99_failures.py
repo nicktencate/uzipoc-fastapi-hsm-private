@@ -4,12 +4,12 @@ import asn1crypto.pem
 
 def test_root(client, module, slot):  # pylint: disable=unused-argument
     resp = client.get("/").json()
+    del resp['data']['modules'][0]['module']  # dynamic path
     assert resp == {
         "data": {
             "ca": {"ca": "clients/ca.pem", "crl": "clients/crl.pem"},
             "modules": [
                 {
-                    "module": "/usr/lib64/pkcs11/libsofthsm2.so",
                     "name": "softhsm",
                     "slots": [
                         {"pinfile": "secrets/someslot-000.pin", "slot": "SoftHSMLabel"}
