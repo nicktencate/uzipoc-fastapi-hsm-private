@@ -7,3 +7,4 @@ openssl ecparam -name prime256v1 -genkey -noout -out openssl-eckey.pem
 openssl ec -in openssl-eckey.pem -pubout -out openssl-ecpublic.pem
 openssl genrsa -out openssl-rsakey.pem 2048
 openssl rsa -in openssl-rsakey.pem -outform PEM -pubout -out openssl-rsapublic.pem
+echo "test42424242" | openssl cms  -aes256 -encrypt -outform pem test-leaf-cert-ec-sha256_ecdsa.pem > cms-encrypted-sha256_ecdsa.pem

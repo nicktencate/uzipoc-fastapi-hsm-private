@@ -449,7 +449,7 @@ class HSMModule:  # pylint: disable=too-many-public-methods
         )
         output = b""
         counter = 0
-        while len(output) < sha.digest_size:
+        while len(output) < aessize / 8:
             counter += 1
             sha = hasher()
             sha.update(deriv[pkcs11.Attribute.VALUE])

@@ -98,15 +98,15 @@ app = FastAPI(
 )
 
 
-@app.exception_handler(HSMError)
-async def fallback_exception_handler(_: Request, exc: HSMError) -> JSONResponse:
-    return JSONResponse(
-        status_code=422,
-        content={
-            "error": "Unprocessible HSM Request",
-            "error_description": exc.message,
-        },
-    )
+#@app.exception_handler(HSMError)
+#async def fallback_exception_handler(_: Request, exc: HSMError) -> JSONResponse:
+#    return JSONResponse(
+#        status_code=422,
+#        content={
+#            "error": "Unprocessible HSM Request",
+#            "error_description": exc.message,
+#        },
+#    )
 
 
 @app.get("/")
