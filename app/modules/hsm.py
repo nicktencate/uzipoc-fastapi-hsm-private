@@ -54,7 +54,7 @@ class SharedInfo(asn1crypto.core.Sequence):
         ("suppPubInfo", asn1crypto.core.OctetString, {"explicit": 2}),
     ]
 
-class Mapper:
+class Mapper:  # pylint: disable=too-few-public-methods
     maps = {}
     def map(self, method):
         if method in self.maps:
