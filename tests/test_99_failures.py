@@ -7,7 +7,8 @@ def test_root(client, module, slot):  # pylint: disable=unused-argument
     del resp["data"]["modules"][0]["module"]  # dynamic path
     assert resp == {
         "data": {
-            "ca": {"ca": "clients/ca.pem", "crl": "clients/crl.pem"},
+            "ca": {"ca": "pki/ca.crt", "crl": "pki/crl.pem"},
+            'tls': {'certificate': 'pki/issued/hsmservice.crt', 'key': 'pki/private/hsmservice.key'},
             "modules": [
                 {
                     "name": "softhsm",
