@@ -168,8 +168,8 @@ class HSMModule:  # pylint: disable=too-many-public-methods
         if so.label:
             attrs[Attribute.LABEL] = so.label
         if so.objid:
-            attrs[Attribute.ID] = so.objid.decode()
-        if so.objtype:
+            attrs[Attribute.ID] = bytes.fromhex(so.objid)
+        if hasattr(so, "objtype") and so.objtype:
             attrs[Attribute.CLASS] = getattr(pkcs11.ObjectClass, so.objtype)
         return attrs
 
@@ -186,7 +186,7 @@ class HSMModule:  # pylint: disable=too-many-public-methods
         except:  # pylint: disable=bare-except
             return False, None
 
-    def _objtoobj(self, obj):  # pylint: disable=no-self-use
+    def _objtoobj(self, obj):  # pylint: disable=no-self-use, too-many-branches
         retobj = {}
         for attr in pkcs11.Attribute:
             try:
@@ -212,6 +212,10 @@ class HSMModule:  # pylint: disable=too-many-public-methods
                     "SERIAL_NUMBER",
                 ]:
                     retobj[attrname] = asn1crypto.core.Integer().load(obj[attr]).native
+                elif attrname in [
+                    "ID",
+                ]:
+                    retobj[attrname] = obj[attr].hex()
                 else:
                     name, content = self._objtocontent(obj, attr)
                     if name:
@@ -239,39 +243,69 @@ class HSMModule:  # pylint: disable=too-many-public-methods
         return retobj
 
     def gen_rsa(self, name, label, rsagen: RSAGenParam):
+        if self.getobjdetails(name, label, rsagen):
+            raise HSMError("Object already exists")
         public, private = self.modules[name][label].generate_keypair(
-            pkcs11.KeyType.RSA, rsagen.bits, label=rsagen.label, store=True
+            pkcs11.KeyType.RSA,
+            rsagen.bits,
+            label=rsagen.label,
+            id=bytes.fromhex(rsagen.objid) if rsagen.objid else None,
+            store=True,
         )
         return [self._objtoobj(obj) for obj in [public, private]]
 
     def gen_dsa(self, name, label, dsagen: RSAGenParam):
+        if self.getobjdetails(name, label, dsagen):
+            raise HSMError("Object already exists")
         public, private = self.modules[name][label].generate_keypair(
-            pkcs11.KeyType.DSA, dsagen.bits, label=dsagen.label, store=True
+            pkcs11.KeyType.DSA,
+            dsagen.bits,
+            label=dsagen.label,
+            store=True,
+            id=bytes.fromhex(dsagen.objid) if dsagen.objid else None,
         )
         return [self._objtoobj(obj) for obj in [public, private]]
 
     def gen_aes(self, name, label, aesgen: AESGenParam):
+        if self.getobjdetails(name, label, aesgen):
+            raise HSMError("Object already exists")
         private = self.modules[name][label].generate_key(
-            pkcs11.KeyType.AES, aesgen.bits, label=aesgen.label, store=True
+            pkcs11.KeyType.AES,
+            aesgen.bits,
+            label=aesgen.label,
+            store=True,
+            id=bytes.fromhex(aesgen.objid) if aesgen.objid else None,
         )
         return [self._objtoobj(obj) for obj in [private]]
 
     def gen_ec(self, name, label, ecgen: ECGenParam):
+        if self.getobjdetails(name, label, ecgen):
+            raise HSMError("Object already exists")
         parameters = self.modules[name][label].create_domain_parameters(
             pkcs11.KeyType.EC,
             {Attribute.EC_PARAMS: encode_named_curve_parameters(ecgen.curve)},
             local=True,
         )
-        public, private = parameters.generate_keypair(store=True, label=ecgen.label)
+        public, private = parameters.generate_keypair(
+            store=True,
+            label=ecgen.label,
+            id=bytes.fromhex(ecgen.objid) if ecgen.objid else None,
+        )
         return [self._objtoobj(obj) for obj in [public, private]]
 
     def gen_edwards(self, name, label, ecgen: ECGenParam):
+        if self.getobjdetails(name, label, ecgen):
+            raise HSMError("Object already exists")
         parameters = self.modules[name][label].create_domain_parameters(
             pkcs11.KeyType.EC_EDWARDS,
             {Attribute.EC_PARAMS: encode_named_curve_parameters(ecgen.curve)},
             local=True,
         )
-        public, private = parameters.generate_keypair(store=True, label=ecgen.label)
+        public, private = parameters.generate_keypair(
+            store=True,
+            label=ecgen.label,
+            id=bytes.fromhex(ecgen.objid) if ecgen.objid else None,
+        )
         return [self._objtoobj(obj) for obj in [public, private]]
 
     def destroyobj(self, name, label, so: SearchObject):
