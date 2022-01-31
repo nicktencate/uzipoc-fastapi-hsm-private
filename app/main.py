@@ -6,6 +6,10 @@ defined using the FastAPI library.
 from typing import Union
 from typing import Optional
 
+from base64 import b64decode
+
+import asn1crypto.x509
+
 import yaml
 from fastapi import FastAPI, Request, HTTPException, Header
 from fastapi.responses import JSONResponse
@@ -30,8 +34,6 @@ from .modules.model import (
     DeriveObject,
 )
 
-import asn1crypto.x509
-from base64 import b64decode
 
 with open("conf.yml", "r", encoding="utf-8") as yamlfile:
     config = yaml.load(yamlfile, Loader=yaml.Loader)
@@ -101,24 +103,24 @@ app = FastAPI(
 )
 
 
-class Solution(object):
-   def isMatch(self, s, p):
-      sl = len(s)
-      pl = len(p)
-      dp = [[False for i in range(pl+1)] for j in range(sl+1)]
-      s = " "+s
-      p = " "+p
-      dp[0][0]=True
-      for i in range(1,pl+1):
-         if p[i] == '*':
-            dp[0][i] = dp[0][i-1]
-      for i in range(1,sl+1):
-         for j in range(1,pl+1):
-            if s[i] == p[j] or p[j] == '?':
-               dp[i][j] = dp[i-1][j-1]
-            elif p[j]=='*':
-               dp[i][j] = max(dp[i-1][j],dp[i][j-1])
-      return dp[sl][pl]
+def isMatch(s, p):
+    sl = len(s)
+    pl = len(p)
+    dp = [[False for i in range(pl + 1)] for j in range(sl + 1)]
+    s = " " + s
+    p = " " + p
+    dp[0][0] = True
+    for i in range(1, pl + 1):
+        if p[i] == "*":
+            dp[0][i] = dp[0][i - 1]
+    for i in range(1, sl + 1):
+        for j in range(1, pl + 1):
+            if s[i] == p[j] or p[j] == "?":
+                dp[i][j] = dp[i - 1][j - 1]
+            elif p[j] == "*":
+                dp[i][j] = max(dp[i - 1][j], dp[i][j - 1])
+    return dp[sl][pl]
+
 
 @app.exception_handler(HSMError)
 async def fallback_exception_handler(_: Request, exc: HSMError) -> JSONResponse:
@@ -132,9 +134,13 @@ async def fallback_exception_handler(_: Request, exc: HSMError) -> JSONResponse:
 
 
 def is_authorized(x_ssl_cert, module=None, slot=None, use=None, key=None):
-    sslcert = x_ssl_cert.replace(' ','').replace('-----BEGINCERTIFICATE-----','').replace('-----ENDCERTIFICATE-----','')
+    sslcert = (
+        x_ssl_cert.replace(" ", "")
+        .replace("-----BEGINCERTIFICATE-----", "")
+        .replace("-----ENDCERTIFICATE-----", "")
+    )
     der = b64decode(sslcert)
-    subject = asn1crypto.x509.Certificate.load(der).subject.native['common_name']
+    subject = asn1crypto.x509.Certificate.load(der).subject.native["common_name"]
 
     ssl_module, ssl_slot, ssl_keyusage = subject.split("^")
     if not module:
@@ -147,9 +153,9 @@ def is_authorized(x_ssl_cert, module=None, slot=None, use=None, key=None):
     if not ssl_slot == slot:
         raise HTTPException(401, detail="Not authorized for slot")
 
-    nlimit, ulimit = ssl_keyusage.split("=")
-    ulimits = ulimit.split(',')
-    nlimits = nlimit.split(',')
+    nlimits, ulimits = ssl_keyusage.split("=")
+    ulimits = ulimits.split(",")
+    nlimits = nlimits.split(",")
 
     if not use:
         return True
@@ -158,17 +164,15 @@ def is_authorized(x_ssl_cert, module=None, slot=None, use=None, key=None):
 
     if not key:
         return True
-    ob = Solution()    
     for nlimiter in nlimits:
-        if ob.isMatch(key, nlimiter):
+        if isMatch(key, nlimiter):
             return True
-    
+
     raise HTTPException(401, detail=f"Not authorized for usage: {use}")
 
 
 @app.get("/")
-async def root(x_ssl_cert: Optional[str] = Header(None)
-):
+async def root(x_ssl_cert: Optional[str] = Header(None)):
     is_authorized(x_ssl_cert)
     return {"error": 0, "message": "working", "data": config}
 
@@ -180,13 +184,20 @@ async def hsmlist(x_ssl_cert: Optional[str] = Header(None)):
 
 
 @app.get("/hsm/{module}", tags=["Listing"])
-async def modlist(module: Modules, x_ssl_cert: Optional[str] = Header(None), ):
+async def modlist(
+    module: Modules,
+    x_ssl_cert: Optional[str] = Header(None),
+):
     is_authorized(x_ssl_cert, module)
     return {"module": module, "slots": hsm.list_slots(module)}
 
 
 @app.get("/hsm/{module}/{slot}", tags=["Listing"])
-async def slotlist(module: Modules, slot: Slots, x_ssl_cert: Optional[str] = Header(None), ):
+async def slotlist(
+    module: Modules,
+    slot: Slots,
+    x_ssl_cert: Optional[str] = Header(None),
+):
     is_authorized(x_ssl_cert, module, slot)
     return {
         "module": module,
@@ -197,7 +208,12 @@ async def slotlist(module: Modules, slot: Slots, x_ssl_cert: Optional[str] = Hea
 
 
 @app.post("/hsm/{module}/{slot}", tags=["Listing"])
-async def getobjdetails(module: Modules, slot: Slots, so: SearchObject, x_ssl_cert: Optional[str] = Header(None)):
+async def getobjdetails(
+    module: Modules,
+    slot: Slots,
+    so: SearchObject,
+    x_ssl_cert: Optional[str] = Header(None),
+):
     is_authorized(x_ssl_cert, module, slot, "use", so.label)
     return {
         "module": module,
@@ -207,31 +223,56 @@ async def getobjdetails(module: Modules, slot: Slots, so: SearchObject, x_ssl_ce
 
 
 @app.post("/hsm/{module}/{slot}/generate/rsa", tags=["Key generation"])
-async def genrsa(module: Modules, slot: Slots, rsagen: RSAGenParam, x_ssl_cert: Optional[str] = Header(None)):
+async def genrsa(
+    module: Modules,
+    slot: Slots,
+    rsagen: RSAGenParam,
+    x_ssl_cert: Optional[str] = Header(None),
+):
     is_authorized(x_ssl_cert, module, slot, "create", rsagen.label)
     return {"module": module, "slot": slot, "result": hsm.gen_rsa(module, slot, rsagen)}
 
 
 @app.post("/hsm/{module}/{slot}/generate/dsa", tags=["Key generation"])
-async def gendsa(module: Modules, slot: Slots, dsagen: DSAGenParam, x_ssl_cert: Optional[str] = Header(None)):
+async def gendsa(
+    module: Modules,
+    slot: Slots,
+    dsagen: DSAGenParam,
+    x_ssl_cert: Optional[str] = Header(None),
+):
     is_authorized(x_ssl_cert, module, slot, "create", dsagen.label)
     return {"module": module, "slot": slot, "result": hsm.gen_dsa(module, slot, dsagen)}
 
 
 @app.post("/hsm/{module}/{slot}/generate/aes", tags=["Key generation"])
-async def genaes(module: Modules, slot: Slots, aesgen: AESGenParam, x_ssl_cert: Optional[str] = Header(None)):
+async def genaes(
+    module: Modules,
+    slot: Slots,
+    aesgen: AESGenParam,
+    x_ssl_cert: Optional[str] = Header(None),
+):
     is_authorized(x_ssl_cert, module, slot, "create", aesgen.label)
     return {"module": module, "slot": slot, "result": hsm.gen_aes(module, slot, aesgen)}
 
 
 @app.post("/hsm/{module}/{slot}/generate/ec", tags=["Key generation"])
-async def genec(module: Modules, slot: Slots, ecgen: ECGenParam, x_ssl_cert: Optional[str] = Header(None)):
+async def genec(
+    module: Modules,
+    slot: Slots,
+    ecgen: ECGenParam,
+    x_ssl_cert: Optional[str] = Header(None),
+):
     is_authorized(x_ssl_cert, module, slot, "create", ecgen.label)
     return {"module": module, "slot": slot, "result": hsm.gen_ec(module, slot, ecgen)}
 
 
 @app.post("/hsm/{module}/{slot}/generate/edwards", tags=["Key generation"])
-async def genedwards(module: Modules, slot: Slots, ecgen: ECGenParam, x_ssl_cert: Optional[str] = Header(None)):
+async def genedwards(
+    module: Modules,
+    slot: Slots,
+    ecgen: ECGenParam,
+    x_ssl_cert: Optional[str] = Header(None),
+):
     is_authorized(x_ssl_cert, module, slot, "create", ecgen.label)
     return {
         "module": module,
@@ -241,57 +282,100 @@ async def genedwards(module: Modules, slot: Slots, ecgen: ECGenParam, x_ssl_cert
 
 
 @app.post("/hsm/{module}/{slot}/destroy", tags=["Object removal"])
-async def destroyobj(module: Modules, slot: Slots, so: SearchObject, x_ssl_cert: Optional[str] = Header(None)):
+async def destroyobj(
+    module: Modules,
+    slot: Slots,
+    so: SearchObject,
+    x_ssl_cert: Optional[str] = Header(None),
+):
     is_authorized(x_ssl_cert, module, slot, "destroy", so.label)
     return {"module": module, "slot": slot, "result": hsm.destroyobj(module, slot, so)}
 
 
 @app.post("/hsm/{module}/{slot}/encrypt", tags=["Key usage"])
-async def encrypt(module: Modules, slot: Slots, so: DecryptEncryptObject, x_ssl_cert: Optional[str] = Header(None)):
+async def encrypt(
+    module: Modules,
+    slot: Slots,
+    so: DecryptEncryptObject,
+    x_ssl_cert: Optional[str] = Header(None),
+):
     is_authorized(x_ssl_cert, module, slot, "use", so.label)
     return {"module": module, "slot": slot, "result": hsm.encrypt(module, slot, so)}
 
 
 @app.post("/hsm/{module}/{slot}/decrypt", tags=["Key usage"])
-async def decrypt(module: Modules, slot: Slots, so: DecryptEncryptObject, x_ssl_cert: Optional[str] = Header(None)):
+async def decrypt(
+    module: Modules,
+    slot: Slots,
+    so: DecryptEncryptObject,
+    x_ssl_cert: Optional[str] = Header(None),
+):
     is_authorized(x_ssl_cert, module, slot, "use", so.label)
     return {"module": module, "slot": slot, "result": hsm.decrypt(module, slot, so)}
 
 
 @app.post("/hsm/{module}/{slot}/sign", tags=["Key usage"])
-async def sign(module: Modules, slot: Slots, so: Union[SignRSAObject, SignAESObject], x_ssl_cert: Optional[str] = Header(None)):
+async def sign(
+    module: Modules,
+    slot: Slots,
+    so: Union[SignRSAObject, SignAESObject],
+    x_ssl_cert: Optional[str] = Header(None),
+):
     is_authorized(x_ssl_cert, module, slot, "use", so.label)
     return {"module": module, "slot": slot, "result": hsm.sign(module, slot, so)}
 
 
 @app.post("/hsm/{module}/{slot}/verify", tags=["Key usage"])
 async def verify(
-    module: Modules, slot: Slots, so: Union[VerifyRSAObject, VerifyAESObject], x_ssl_cert: Optional[str] = Header(None)
+    module: Modules,
+    slot: Slots,
+    so: Union[VerifyRSAObject, VerifyAESObject],
+    x_ssl_cert: Optional[str] = Header(None),
 ):
     is_authorized(x_ssl_cert, module, slot, "use", so.label)
     return {"module": module, "slot": slot, "result": hsm.verify(module, slot, so)}
 
 
 @app.post("/hsm/{module}/{slot}/wrap", tags=["Key usage"])
-async def wrap(module: Modules, slot: Slots, so: WrapAESObject, x_ssl_cert: Optional[str] = Header(None)):
+async def wrap(
+    module: Modules,
+    slot: Slots,
+    so: WrapAESObject,
+    x_ssl_cert: Optional[str] = Header(None),
+):
     is_authorized(x_ssl_cert, module, slot, "use", so.label)
     return {"module": module, "slot": slot, "result": hsm.wrap(module, slot, so)}
 
 
 @app.post("/hsm/{module}/{slot}/unwrap", tags=["Key usage"])
-async def unwrap(module: Modules, slot: Slots, so: WrapAESObject, x_ssl_cert: Optional[str] = Header(None)):
+async def unwrap(
+    module: Modules,
+    slot: Slots,
+    so: WrapAESObject,
+    x_ssl_cert: Optional[str] = Header(None),
+):
     is_authorized(x_ssl_cert, module, slot, "use", so.label)
     return {"module": module, "slot": slot, "result": hsm.unwrap(module, slot, so)}
 
 
 @app.post("/hsm/{module}/{slot}/derive", tags=["Key usage"])
-async def derive(module: Modules, slot: Slots, so: DeriveObject, x_ssl_cert: Optional[str] = Header(None)):
+async def derive(
+    module: Modules,
+    slot: Slots,
+    so: DeriveObject,
+    x_ssl_cert: Optional[str] = Header(None),
+):
     is_authorized(x_ssl_cert, module, slot, "use", so.label)
     return {"module": module, "slot": slot, "result": hsm.derive(module, slot, so)}
 
 
 @app.post("/hsm/{module}/{slot}/import", tags=["Import"])
-async def importdata(module: Modules, slot: Slots, so: ImportObject, x_ssl_cert: Optional[str] = Header(None)):
+async def importdata(
+    module: Modules,
+    slot: Slots,
+    so: ImportObject,
+    x_ssl_cert: Optional[str] = Header(None),
+):
     is_authorized(x_ssl_cert, module, slot, "import", so.label)
     return {
         "module": module,

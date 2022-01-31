@@ -8,7 +8,10 @@ def test_root(client, module, slot):  # pylint: disable=unused-argument
     assert resp == {
         "data": {
             "ca": {"ca": "pki/ca.crt", "crl": "pki/crl.pem"},
-            'tls': {'certificate': 'pki/issued/hsmservice.crt', 'key': 'pki/private/hsmservice.key'},
+            "tls": {
+                "certificate": "pki/issued/hsmservice.crt",
+                "key": "pki/private/hsmservice.key",
+            },
             "modules": [
                 {
                     "name": "softhsm",

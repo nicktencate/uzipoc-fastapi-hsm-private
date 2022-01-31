@@ -13,6 +13,7 @@ def client():
 def fakecheckcert(_ssl_cert, _module=None, _slot=None, _use=None, _key=None):
     return True
 
+
 @pytest.fixture
 def module(client, mocker):  # pylint: disable=redefined-outer-name
     # Skip authentication for this call always, but then return to
