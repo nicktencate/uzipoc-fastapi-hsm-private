@@ -103,6 +103,17 @@ app = FastAPI(
 )
 
 
+@app.exception_handler(HSMError)
+async def fallback_exception_handler(_: Request, exc: HSMError) -> JSONResponse:
+    return JSONResponse(
+        status_code=422,
+        content={
+            "error": "Unprocessible HSM Request",
+            "error_description": exc.message,
+        },
+    )
+
+
 def isMatch(s, p):
     sl = len(s)
     pl = len(p)
@@ -120,17 +131,6 @@ def isMatch(s, p):
             elif p[j] == "*":
                 dp[i][j] = max(dp[i - 1][j], dp[i][j - 1])
     return dp[sl][pl]
-
-
-@app.exception_handler(HSMError)
-async def fallback_exception_handler(_: Request, exc: HSMError) -> JSONResponse:
-    return JSONResponse(
-        status_code=422,
-        content={
-            "error": "Unprocessible HSM Request",
-            "error_description": exc.message,
-        },
-    )
 
 
 def is_authorized(x_ssl_cert, module=None, slot=None, use=None, key=None):
