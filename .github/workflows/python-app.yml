@@ -31,9 +31,9 @@ jobs:
         with:
           path: ./.venv/  # we cache: the virtualenv
           # The cache key depends on requirements*.txt
-          key: v3-${{ runner.os }}-${{ matrix.python-version }}-venv-${{ hashFiles('**/requirements*.txt') }}
+          key: v4-${{ runner.os }}-${{ matrix.python-version }}-venv-${{ hashFiles('**/requirements*.txt') }}
           restore-keys: |
-            v3-${{ runner.os }}-${{ matrix.python-version }}-venv-
+            v4-${{ runner.os }}-${{ matrix.python-version }}-venv-
       # Build a virtualenv, but only if it doesn't already exist
       - name: Make venv
         run: make venv
