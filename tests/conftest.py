@@ -10,6 +10,10 @@ def client():
     return TestClient(app)
 
 
+def fakecheckcert(_ssl_cert, _module=None, _slot=None, _use=None, _key=None):
+    return True
+
+
 @pytest.fixture
 def module(client, mocker):  # pylint: disable=redefined-outer-name
     # Skip authentication for this call always, but then return to
@@ -20,7 +24,7 @@ def module(client, mocker):  # pylint: disable=redefined-outer-name
         is_authorized as tmp_is_authorized,
     )
 
-    mocker.patch("app.main.is_authorized", lambda x: True)
+    mocker.patch("app.main.is_authorized", fakecheckcert)
     resp = client.get("/hsm/list").json()["modules"][0]
     mocker.patch("app.main.is_authorized", tmp_is_authorized)
     return resp
@@ -36,7 +40,7 @@ def slot(client, module, mocker):  # pylint: disable=redefined-outer-name
         is_authorized as tmp_is_authorized,
     )
 
-    mocker.patch("app.main.is_authorized", lambda x: True)
+    mocker.patch("app.main.is_authorized", fakecheckcert)
     resp = client.get(f"/hsm/{module}").json()["slots"][0]
     mocker.patch("app.main.is_authorized", tmp_is_authorized)
     return resp
@@ -58,5 +62,5 @@ def disable_authorization_middleware(mocker, request):
         mocker.patch("app.main.is_authorized", is_authorized)
         yield
     else:
-        mocker.patch("app.main.is_authorized", lambda x: True)
+        mocker.patch("app.main.is_authorized", fakecheckcert)
         yield

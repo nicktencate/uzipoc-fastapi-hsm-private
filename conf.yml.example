@@ -6,6 +6,8 @@ modules:
       pinfile: secrets/someslot-000.pin
 
 ca:
-  ca: clients/ca.pem
-  crl: clients/crl.pem
-
+  ca: pki/ca.crt
+  crl: pki/crl.pem
+tls:
+  certificate: pki/issued/hsmservice.crt
+  key: pki/private/hsmservice.key
