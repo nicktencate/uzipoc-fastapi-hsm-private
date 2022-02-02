@@ -55,69 +55,70 @@ class SharedInfo(asn1crypto.core.Sequence):
     ]
 
 
-class KeyXchangeKDF:  # pylint: disable=too-few-public-methods
-    @staticmethod
-    def map(method: HashMethod):
-        maps = {
-            "dhSinglePass-stdDH-sha1kdf-scheme": pkcs11.KDF.SHA1,
-            "dhSinglePass-stdDH-sha224kdf-scheme": pkcs11.KDF.SHA224,
-            "dhSinglePass-stdDH-sha256kdf-scheme": pkcs11.KDF.SHA256,
-            "dhSinglePass-stdDH-sha384kdf-scheme": pkcs11.KDF.SHA384,
-            "dhSinglePass-stdDH-sha512kdf-scheme": pkcs11.KDF.SHA512,
-            "sha1": pkcs11.KDF.SHA1,
-            "sha224": pkcs11.KDF.SHA224,
-            "sha256": pkcs11.KDF.SHA256,
-            "sha384": pkcs11.KDF.SHA384,
-            "sha512": pkcs11.KDF.SHA512,
-        }
-        if method in maps:
-            return maps[method]
-        raise HSMError("Unsupported scheme")
+class Mapper:  # pylint: disable=too-few-public-methods
+    maps = {}
+
+    def map(self, method):
+        if method in self.maps:
+            return self.maps[method]
+        raise HSMError("Value error")
 
 
-class MethodMechanism:  # pylint: disable=too-few-public-methods
-    @staticmethod
-    def map(method: HashMethod):
-        maps = {
-            HashMethod.SHA1: pkcs11.Mechanism.SHA_1,
-            HashMethod.SHA224: pkcs11.Mechanism.SHA224,
-            HashMethod.SHA256: pkcs11.Mechanism.SHA256,
-            HashMethod.SHA384: pkcs11.Mechanism.SHA384,
-            HashMethod.SHA512: pkcs11.Mechanism.SHA512,
-        }
-        if method in maps:
-            return maps[method]
-        raise HSMError("Unsupported method")
+class KeyXchangeKDF(Mapper):  # pylint: disable=too-few-public-methods
+    maps = {
+        "NULL": pkcs11.KDF.NULL,
+        "dhSinglePass-stdDH-sha1kdf-scheme": pkcs11.KDF.SHA1,
+        "dhSinglePass-stdDH-sha224kdf-scheme": pkcs11.KDF.SHA224,
+        "dhSinglePass-stdDH-sha256kdf-scheme": pkcs11.KDF.SHA256,
+        "dhSinglePass-stdDH-sha384kdf-scheme": pkcs11.KDF.SHA384,
+        "dhSinglePass-stdDH-sha512kdf-scheme": pkcs11.KDF.SHA512,
+        "sha1": pkcs11.KDF.SHA1,
+        "sha224": pkcs11.KDF.SHA224,
+        "sha256": pkcs11.KDF.SHA256,
+        "sha384": pkcs11.KDF.SHA384,
+        "sha512": pkcs11.KDF.SHA512,
+    }
 
 
-class MethodMGF:  # pylint: disable=too-few-public-methods
-    @staticmethod
-    def map(method: HashMethod):
-        maps = {
-            HashMethod.SHA1: pkcs11.MGF.SHA1,
-            HashMethod.SHA224: pkcs11.MGF.SHA224,
-            HashMethod.SHA256: pkcs11.MGF.SHA256,
-            HashMethod.SHA384: pkcs11.MGF.SHA384,
-            HashMethod.SHA512: pkcs11.MGF.SHA512,
-        }
-        if method in maps:
-            return maps[method]
-        raise HSMError("Unsupported method")
+class KDFtoMech(Mapper):  # pylint: disable=too-few-public-methods
+    maps = {
+        pkcs11.KDF.NULL: "ECDSA",
+        pkcs11.KDF.SHA1: "ECDSA_SHA1",
+        pkcs11.KDF.SHA224: "ECDSA_SHA224",
+        pkcs11.KDF.SHA256: "ECDSA_SHA256",
+        pkcs11.KDF.SHA384: "ECDSA_SHA384",
+        pkcs11.KDF.SHA512: "ECDSA_SHA512",
+    }
 
 
-class MethodSize:  # pylint: disable=too-few-public-methods
-    @staticmethod
-    def map(method: HashMethod):
-        maps = {
-            HashMethod.SHA1: hashlib.sha1().digest_size,
-            HashMethod.SHA224: hashlib.sha224().digest_size,
-            HashMethod.SHA256: hashlib.sha256().digest_size,
-            HashMethod.SHA384: hashlib.sha384().digest_size,
-            HashMethod.SHA512: hashlib.sha512().digest_size,
-        }
-        if method in maps:
-            return maps[method]
-        raise HSMError("Unsupported method")
+class MethodMechanism(Mapper):  # pylint: disable=too-few-public-methods
+    maps = {
+        HashMethod.SHA1: pkcs11.Mechanism.SHA_1,
+        HashMethod.SHA224: pkcs11.Mechanism.SHA224,
+        HashMethod.SHA256: pkcs11.Mechanism.SHA256,
+        HashMethod.SHA384: pkcs11.Mechanism.SHA384,
+        HashMethod.SHA512: pkcs11.Mechanism.SHA512,
+    }
+
+
+class MethodMGF(Mapper):  # pylint: disable=too-few-public-methods
+    maps = {
+        HashMethod.SHA1: pkcs11.MGF.SHA1,
+        HashMethod.SHA224: pkcs11.MGF.SHA224,
+        HashMethod.SHA256: pkcs11.MGF.SHA256,
+        HashMethod.SHA384: pkcs11.MGF.SHA384,
+        HashMethod.SHA512: pkcs11.MGF.SHA512,
+    }
+
+
+class MethodSize(Mapper):  # pylint: disable=too-few-public-methods
+    maps = {
+        HashMethod.SHA1: hashlib.sha1().digest_size,
+        HashMethod.SHA224: hashlib.sha224().digest_size,
+        HashMethod.SHA256: hashlib.sha256().digest_size,
+        HashMethod.SHA384: hashlib.sha384().digest_size,
+        HashMethod.SHA512: hashlib.sha512().digest_size,
+    }
 
 
 # All public are public?
@@ -153,11 +154,11 @@ class HSMModule:  # pylint: disable=too-many-public-methods
     def hsmlist(self):
         return list(self.modules)
 
-    def is_module(self, modname):
-        return modname in self.modules
+    #    def is_module(self, modname):
+    #        return modname in self.modules
 
-    def is_slot(self, modname, slotname):
-        return modname in self.modules and slotname in self.modules[modname]
+    #    def is_slot(self, modname, slotname):
+    #        return modname in self.modules and slotname in self.modules[modname]
 
     def list_slots(self, modname):
         return list(self.modules[modname])
@@ -167,8 +168,8 @@ class HSMModule:  # pylint: disable=too-many-public-methods
         if so.label:
             attrs[Attribute.LABEL] = so.label
         if so.objid:
-            attrs[Attribute.ID] = so.objid.decode()
-        if so.objtype:
+            attrs[Attribute.ID] = bytes.fromhex(so.objid)
+        if hasattr(so, "objtype") and so.objtype:
             attrs[Attribute.CLASS] = getattr(pkcs11.ObjectClass, so.objtype)
         return attrs
 
@@ -185,7 +186,7 @@ class HSMModule:  # pylint: disable=too-many-public-methods
         except:  # pylint: disable=bare-except
             return False, None
 
-    def _objtoobj(self, obj):  # pylint: disable=no-self-use
+    def _objtoobj(self, obj):  # pylint: disable=no-self-use, too-many-branches
         retobj = {}
         for attr in pkcs11.Attribute:
             try:
@@ -211,6 +212,10 @@ class HSMModule:  # pylint: disable=too-many-public-methods
                     "SERIAL_NUMBER",
                 ]:
                     retobj[attrname] = asn1crypto.core.Integer().load(obj[attr]).native
+                elif attrname in [
+                    "ID",
+                ]:
+                    retobj[attrname] = obj[attr].hex()
                 else:
                     name, content = self._objtocontent(obj, attr)
                     if name:
@@ -238,39 +243,69 @@ class HSMModule:  # pylint: disable=too-many-public-methods
         return retobj
 
     def gen_rsa(self, name, label, rsagen: RSAGenParam):
+        if self.getobjdetails(name, label, rsagen):
+            raise HSMError("Object already exists")
         public, private = self.modules[name][label].generate_keypair(
-            pkcs11.KeyType.RSA, rsagen.bits, label=rsagen.label, store=True
+            pkcs11.KeyType.RSA,
+            rsagen.bits,
+            label=rsagen.label,
+            id=bytes.fromhex(rsagen.objid) if rsagen.objid else None,
+            store=True,
         )
         return [self._objtoobj(obj) for obj in [public, private]]
 
     def gen_dsa(self, name, label, dsagen: RSAGenParam):
+        if self.getobjdetails(name, label, dsagen):
+            raise HSMError("Object already exists")
         public, private = self.modules[name][label].generate_keypair(
-            pkcs11.KeyType.DSA, dsagen.bits, label=dsagen.label, store=True
+            pkcs11.KeyType.DSA,
+            dsagen.bits,
+            label=dsagen.label,
+            store=True,
+            id=bytes.fromhex(dsagen.objid) if dsagen.objid else None,
         )
         return [self._objtoobj(obj) for obj in [public, private]]
 
     def gen_aes(self, name, label, aesgen: AESGenParam):
+        if self.getobjdetails(name, label, aesgen):
+            raise HSMError("Object already exists")
         private = self.modules[name][label].generate_key(
-            pkcs11.KeyType.AES, aesgen.bits, label=aesgen.label, store=True
+            pkcs11.KeyType.AES,
+            aesgen.bits,
+            label=aesgen.label,
+            store=True,
+            id=bytes.fromhex(aesgen.objid) if aesgen.objid else None,
         )
         return [self._objtoobj(obj) for obj in [private]]
 
     def gen_ec(self, name, label, ecgen: ECGenParam):
+        if self.getobjdetails(name, label, ecgen):
+            raise HSMError("Object already exists")
         parameters = self.modules[name][label].create_domain_parameters(
             pkcs11.KeyType.EC,
             {Attribute.EC_PARAMS: encode_named_curve_parameters(ecgen.curve)},
             local=True,
         )
-        public, private = parameters.generate_keypair(store=True, label=ecgen.label)
+        public, private = parameters.generate_keypair(
+            store=True,
+            label=ecgen.label,
+            id=bytes.fromhex(ecgen.objid) if ecgen.objid else None,
+        )
         return [self._objtoobj(obj) for obj in [public, private]]
 
     def gen_edwards(self, name, label, ecgen: ECGenParam):
+        if self.getobjdetails(name, label, ecgen):
+            raise HSMError("Object already exists")
         parameters = self.modules[name][label].create_domain_parameters(
             pkcs11.KeyType.EC_EDWARDS,
             {Attribute.EC_PARAMS: encode_named_curve_parameters(ecgen.curve)},
             local=True,
         )
-        public, private = parameters.generate_keypair(store=True, label=ecgen.label)
+        public, private = parameters.generate_keypair(
+            store=True,
+            label=ecgen.label,
+            id=bytes.fromhex(ecgen.objid) if ecgen.objid else None,
+        )
         return [self._objtoobj(obj) for obj in [public, private]]
 
     def destroyobj(self, name, label, so: SearchObject):
@@ -410,18 +445,61 @@ class HSMModule:  # pylint: disable=too-many-public-methods
     #   data: ""
     #   size: aantal returned bits
     #   algorithm: optioneel: SHA256 ofzoiets
-    def _derive_key(self, so: SearchObject, toexec, data: bytes):
+    def _unsupported_hardware_derive(  # pylint: disable=too-many-arguments, too-many-locals
+        self, toexec, keytype, aessize, mechanism_param, module, template=None
+    ):
+        mechs = self._list_slot_mech(module)
+        kdf, sharedinfo, otherpub = mechanism_param
+        mech = KDFtoMech().map(kdf)
+        if mech in mechs:
+            return toexec(
+                keytype, aessize, mechanism_param=mechanism_param, template=template
+            )
+
+        hashmethod = mech[mech.index("_") + 1 :]
+        hasher = getattr(hashlib, hashmethod.lower())
+        sha = hasher()
+        deriv = toexec(
+            keytype,
+            aessize,
+            mechanism_param=(KeyXchangeKDF().map("NULL"), None, otherpub),
+            template=self.publictemplate,
+        )
+        output = b""
+        counter = 0
+        while len(output) < aessize / 8:
+            counter += 1
+            sha = hasher()
+            sha.update(deriv[pkcs11.Attribute.VALUE])
+            sha.update(pack(">L", counter))
+            sha.update(sharedinfo)
+            output += sha.digest()
+        attrs = {
+            pkcs11.Attribute.KEY_TYPE: pkcs11.KeyType.AES,
+            pkcs11.Attribute.CLASS: pkcs11.ObjectClass.SECRET_KEY,
+            pkcs11.Attribute.VALUE: output[: int(aessize / 8)],
+        }
+        attrs.update(self.publictemplate)
+        return module.create_object(attrs)
+
+    def _derive_key(self, so: SearchObject, toexec, data: bytes, module: str):
         # this seems counter intiutive, however if you want to return an AES key it should be extractable after
         # calculation
         otherpub = base64.b64decode(so.otherpub)
         sharedinfo = so.sharedinfo if hasattr(so, "sharedinfo") else None
+
         thekdf = (
-            KeyXchangeKDF(so.algorithm) if hasattr(so, "algorithm") else pkcs11.KDF.NULL
+            KeyXchangeKDF().map(so.algorithm)
+            if hasattr(so, "algorithm") and so.algorithm
+            else pkcs11.KDF.NULL
         )
-        if hasattr(so, "wrap") or hasattr(so, "unwrap"):
-            wrap = so.wrap if hasattr(so, "wrap") else so.unwrap
-            if hasattr(so, "algorithm") and so.algorithm.startswith(
-                "dhSinglePass-stdDH-sha"
+        if (hasattr(so, "wrap") and so.wrap) or (hasattr(so, "unwrap") and so.unwrap):
+            wrap = so.wrap if hasattr(so, "wrap") and so.wrap else so.unwrap
+            aessize = int(wrap[3:6])
+            if (
+                hasattr(so, "algorithm")
+                and so.algorithm
+                and so.algorithm.startswith("dhSinglePass-stdDH-sha")
             ):
                 sharedinfo = SharedInfo(
                     {
@@ -429,34 +507,48 @@ class HSMModule:  # pylint: disable=too-many-public-methods
                         "suppPubInfo": pack(">L", aessize),
                     }
                 ).dump()
-            aessize = int(so.wrap[3:6])
-            newaes = toexec(
+            newaes = self._unsupported_hardware_derive(
+                toexec,
                 pkcs11.KeyType.AES,
                 aessize,
                 mechanism_param=(thekdf, sharedinfo, otherpub),
+                module=module,
             )
-            if hasattr(so, "wrap"):
+            if hasattr(so, "wrap") and so.wrap:
                 toexec_wrap = getattr(newaes, "wrap_key")
-            else:
+                attrs = {
+                    pkcs11.Attribute.KEY_TYPE: pkcs11.KeyType.AES,
+                    pkcs11.Attribute.CLASS: pkcs11.ObjectClass.SECRET_KEY,
+                    pkcs11.Attribute.VALUE: data,
+                }
+                attrs.update(self.publictemplate)
+                return base64.b64encode(
+                    toexec_wrap(
+                        module.create_object(attrs),
+                    )
+                )
+            if hasattr(so, "unwrap") and so.unwrap:
                 toexec_wrap = getattr(newaes, "unwrap_key")
+                return base64.b64encode(
+                    toexec_wrap(
+                        pkcs11.ObjectClass.SECRET_KEY,
+                        pkcs11.KeyType.AES,
+                        data,
+                        template=self.publictemplate,
+                    )[pkcs11.Attribute.VALUE]
+                )
+        if hasattr(so, "size") and so.size:
             return base64.b64encode(
-                toexec_wrap(
-                    pkcs11.ObjectClass.SECRET_KEY,
-                    pkcs11.KeyType.AES,
-                    data,
-                    template=self.publictemplate,
-                )["pkcs11.Attribute.VALUE"]
-            )
-        if hasattr(so, "size"):
-            return base64.b64encode(
-                toexec(
+                self._unsupported_hardware_derive(
+                    toexec,
                     pkcs11.KeyType.AES,
                     so.size,
                     mechanism_param=(thekdf, sharedinfo, otherpub),
+                    module=module,
                     template=self.publictemplate,
-                )["pkcs11.Attribute.VALUE"]
+                )[pkcs11.Attribute.VALUE]
             )
-        return False
+        raise HSMError("Not enought arguments")
 
     def _dsa(
         self, so: SearchObject, toexec, data: bytes, thefunc: str
@@ -477,7 +569,13 @@ class HSMModule:  # pylint: disable=too-many-public-methods
                     mechanism_param=mechanism_param,
                 )
             )
-        return False
+        if thefunc == "verify":
+            return toexec(data, base64.b64decode(so.signature))
+        return base64.b64encode(
+            toexec(
+                data,
+            )
+        )
 
     def _ec(
         self, so: SearchObject, toexec, data: bytes, thefunc: str
@@ -503,13 +601,14 @@ class HSMModule:  # pylint: disable=too-many-public-methods
                         )
                     )
                 )
-            return base64.b64encode(
-                toexec(
-                    data,
-                    mechanism=getattr(pkcs11.Mechanism, so.mechanism),
-                    mechanism_param=mechanism_param,
-                )
-            )
+            # Only sign and verify are supported because derived is handled elsewhere
+            # return base64.b64encode(
+            #    toexec(
+            #        data,
+            #        mechanism=getattr(pkcs11.Mechanism, so.mechanism),
+            #        mechanism_param=mechanism_param,
+            #    )
+            # )
         if thefunc == "verify":
             return toexec(data, base64.b64decode(so.signature))
         return base64.b64encode(toexec(data))
@@ -523,15 +622,15 @@ class HSMModule:  # pylint: disable=too-many-public-methods
             or (so.mechanism and so.mechanism.endswith("RSA_PKCS_PSS"))
         ) and so.hashmethod:
             if (
-                MethodSize.map(so.hashmethod) is not len(data)
+                MethodSize().map(so.hashmethod) is not len(data)
                 and thefunc in ["verify", "sign"]
                 and so.mechanism in ["RSA_PKCS_OAEP", "RSA_PKCS_PSS"]
             ):
                 raise HSMError("Data length does not match hash method")
             mechanism_param = (
-                MethodMechanism.map(so.hashmethod),
-                MethodMGF.map(so.hashmethod),
-                MethodSize.map(so.hashmethod)
+                MethodMechanism().map(so.hashmethod),
+                MethodMGF().map(so.hashmethod),
+                MethodSize().map(so.hashmethod)
                 if thefunc in ["verify", "sign"]
                 else None,
             )
@@ -568,10 +667,15 @@ class HSMModule:  # pylint: disable=too-many-public-methods
             if thefunc == "verify":
                 mechanism_param = theiv
                 mechanism = getattr(pkcs11.Mechanism, so.mechanism)
+            if thefunc == "sign":
+                mechanism = getattr(pkcs11.Mechanism, so.mechanism)
 
         if thefunc == "verify":
             retdata = toexec(
-                data, base64.b64decode(so.signature), mechanism_param=theiv
+                data,
+                base64.b64decode(so.signature),
+                mechanism_param=mechanism_param,
+                mechanism=mechanism,
             )
         elif thefunc == "wrap_key":
             attrs = {
@@ -629,26 +733,30 @@ class HSMModule:  # pylint: disable=too-many-public-methods
         data = base64.b64decode(so.data)
         objs = list(self.modules[name][label].get_objects(attrs))
         if objs:
-
             obj = objs[0]
             toexec = getattr(obj, thefunc)
-            if toexec is None:
-                # HSM API Module is used incorrectly:
-                raise ValueError(f"Function {thefunc} is unknown.")
-            if thefunc == "derive_key":
-                return self._derive_key(so, toexec, data)
-            if obj.key_type == pkcs11.KeyType.RSA:
-                return self._rsa(so, toexec, data, thefunc)
-            if obj.key_type == pkcs11.KeyType.DSA:
-                return self._dsa(so, toexec, data, thefunc)
-            if obj.key_type == pkcs11.KeyType.EC:
-                return self._ec(so, toexec, data, thefunc)
-            if obj.key_type == pkcs11.KeyType.AES:
-                return self._aes(so, toexec, data, thefunc, self.modules[name][label])
-            if thefunc == "verify":
-                return toexec(data, base64.b64decode(so.signature))
-            retdata = toexec(data)
-            return base64.b64encode(retdata)
+            try:
+                if thefunc == "derive_key":
+                    return self._derive_key(so, toexec, data, self.modules[name][label])
+                if obj.key_type == pkcs11.KeyType.RSA:
+                    return self._rsa(so, toexec, data, thefunc)
+                if obj.key_type == pkcs11.KeyType.DSA:
+                    return self._dsa(so, toexec, data, thefunc)
+                if obj.key_type == pkcs11.KeyType.EC:
+                    return self._ec(so, toexec, data, thefunc)
+                if obj.key_type == pkcs11.KeyType.AES:
+                    return self._aes(
+                        so, toexec, data, thefunc, self.modules[name][label]
+                    )
+                retdata = toexec(data)
+                return base64.b64encode(retdata)
+            except RuntimeError as error:
+                raise HSMError(
+                    "Failure at executing function: " + str(type(error))
+                ) from error
+            except Exception as error:
+                raise error
+                # raise HSMError("HSM error: " + str(error))
         raise HSMError("No such key")
 
     def getobjdetails(self, name, label, so: SearchObject):
@@ -658,14 +766,18 @@ class HSMModule:  # pylint: disable=too-many-public-methods
         ]
 
     def list_slot_mech(self, name, label):
-        try:
-            return [
-                # example: Mechanism.AES_CBC => AES_CBC
-                str(x).split(".")[1] if "." in str(x) else "mechtype-" + hex(x)
-                for x in self.modules[name][label].token.slot.get_mechanisms()
-            ]
-        except Exception as mye:
-            raise HSMError(mye) from mye
+        return [
+            # example: Mechanism.AES_CBC => AES_CBC
+            str(x).split(".")[1] if "." in str(x) else "mechtype-" + hex(x)
+            for x in self.modules[name][label].token.slot.get_mechanisms()
+        ]
+
+    def _list_slot_mech(self, module):  # pylint: disable=no-self-use
+        return [
+            # example: Mechanism.AES_CBC => AES_CBC
+            str(x).split(".")[1] if "." in str(x) else "mechtype-" + hex(x)
+            for x in module.token.slot.get_mechanisms()
+        ]
 
     def list_slot(self, name, label):
         usage_attr = [
