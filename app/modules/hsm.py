@@ -55,13 +55,12 @@ class SharedInfo(asn1crypto.core.Sequence):
     ]
 
 
-class Mapper:  # pylint: disable=too-few-public-methods
+class Mapper:  # pylint: disable=too-few-public-methods,inconsistent-return-statements
     maps = {}
 
     def map(self, method):
         if method in self.maps:
             return self.maps[method]
-        raise HSMError("Value error")
 
 
 class KeyXchangeKDF(Mapper):  # pylint: disable=too-few-public-methods

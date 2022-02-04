@@ -168,7 +168,7 @@ def is_authorized(x_ssl_cert, module=None, slot=None, use=None, key=None):
         if isMatch(key, nlimiter):
             return True
 
-    raise HTTPException(401, detail=f"Not authorized for usage: {use}")
+    raise HTTPException(401, detail=f"Not authorized for key: {key}")
 
 
 @app.get("/")

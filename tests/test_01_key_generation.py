@@ -1,5 +1,5 @@
 def test_genaes(client, module, slot):
-    params = {"bits": 256, "label": "AESkey"}
+    params = {"bits": 256, "label": "AESkey", "objid": 4242}
     resp = client.post(f"/hsm/{module}/{slot}/generate/aes", json=params).json()
     del resp["result"][0]["CHECK_VALUE"]
     assert resp["module"] == module
@@ -16,7 +16,7 @@ def test_genaes(client, module, slot):
                 "KEY_TYPE": "AES",
                 "SENSITIVE": True,
                 "ENCRYPT": True,
-                "ID": "",
+                "ID": "4242",
                 "DECRYPT": True,
                 "WRAP": True,
                 "UNWRAP": True,
