@@ -3,6 +3,7 @@ from base64 import b64encode, b64decode
 
 import asn1crypto.pem
 import asn1crypto.core
+import asn1crypto.tsp
 
 import tests.certgen
 

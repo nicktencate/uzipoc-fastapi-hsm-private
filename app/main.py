@@ -3,6 +3,7 @@
 This file contains the API setup to communicate with the configured HSM,
 defined using the FastAPI library.
 """
+
 from typing import Union
 from typing import Optional
 

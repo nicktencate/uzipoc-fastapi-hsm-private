@@ -162,6 +162,7 @@ def test_edwards(client, module, slot):
         assert edwards_X["module"] == module
         assert edwards_X["slot"] == slot
         assert len(edwards_X["result"]) == 2
+        print(edwards_X["result"][0].keys())
         assert all(
             i in edwards_X["result"][0].keys()
             for i in [
@@ -169,8 +170,9 @@ def test_edwards(client, module, slot):
                 "TOKEN",
                 "LABEL",
                 "KEY_TYPE",
-                "VERIFY",
                 "VERIFY_RECOVER",
+                "EC_PARAMS",
+                "EC_POINT",
             ]
         )
         assert edwards_X["result"][0]["KEY_TYPE"] == "EC_EDWARDS"

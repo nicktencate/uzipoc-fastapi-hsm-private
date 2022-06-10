@@ -172,13 +172,25 @@ class HSMModule:  # pylint: disable=too-many-public-methods
             attrs[Attribute.CLASS] = getattr(pkcs11.ObjectClass, so.objtype)
         return attrs
 
-    def _objtocontent(self, obj, want):  # pylint: disable=no-self-use
+    def _objtocontent(
+        self, obj, want
+    ):  # pylint: disable=no-self-use, too-many-return-statements
         try:
             attrname = str(want).split(".")[1]
             if obj[want] and isinstance(obj[want], bytes):
-                return attrname, obj[want].decode("utf-8")
+                try:
+                    return attrname, obj[want].decode("utf-8")
+                except UnicodeDecodeError:
+                    return attrname, base64.b64encode(obj[want]).decode()
             if obj[want] is not None and "." in str(obj[want]):
-                return attrname, str(obj[want]).split(".")[1]
+                if attrname in [
+                    "CLASS",
+                    "KEY_TYPE",
+                    "CERTIFICATE_TYPE",
+                    "KEY_GEN_MECHANISM",
+                ]:
+                    return attrname, str(obj[want]).split(".")[1]
+                return attrname, str(obj[want])
             if obj[want]:
                 return attrname, obj[want]
             return False, None
@@ -210,7 +222,8 @@ class HSMModule:  # pylint: disable=too-many-public-methods
                 elif attrname in [
                     "SERIAL_NUMBER",
                 ]:
-                    retobj[attrname] = asn1crypto.core.Integer().load(obj[attr]).native
+                    serialnumber = asn1crypto.core.Integer().load(obj[attr]).native
+                    retobj[attrname] = f"{serialnumber:X}"
                 elif attrname in [
                     "ID",
                 ]:
@@ -295,6 +308,10 @@ class HSMModule:  # pylint: disable=too-many-public-methods
     def gen_edwards(self, name, label, ecgen: ECGenParam):
         if self.getobjdetails(name, label, ecgen):
             raise HSMError("Object already exists")
+        if self.modules[name][label].token.manufacturer_id == "Utimaco IS GmbH":
+            if ecgen.curve == "curve25519":
+                ecgen.curve = "1.3.6.1.4.1.3159.2.2.1"
+                return self.gen_ec(name, label, ecgen)
         parameters = self.modules[name][label].create_domain_parameters(
             pkcs11.KeyType.EC_EDWARDS,
             {Attribute.EC_PARAMS: encode_named_curve_parameters(ecgen.curve)},
@@ -304,6 +321,9 @@ class HSMModule:  # pylint: disable=too-many-public-methods
             store=True,
             label=ecgen.label,
             id=bytes.fromhex(ecgen.objid) if ecgen.objid else None,
+            capabilities=pkcs11.MechanismFlag.DERIVE
+            if ecgen.curve in ["curve25519", "curve448"]
+            else None,
         )
         return [self._objtoobj(obj) for obj in [public, private]]
 
@@ -387,10 +407,18 @@ class HSMModule:  # pylint: disable=too-many-public-methods
                 attrs = self._import_publickey(attrs, content)
             else:
                 raise HSMError(f"Can't import {datatype}")
-        if pkcs11.Attribute.CLASS in attrs:
-            return [self._objtoobj(self.modules[name][label].create_object(attrs))]
-        # TODO: AES import
-        raise HSMError("Raw import not supported yet")
+        if (
+            pkcs11.Attribute.CLASS in attrs
+            and attrs[pkcs11.Attribute.CLASS] == pkcs11.ObjectClass.DATA
+        ):
+            attrs.update({pkcs11.Attribute.VALUE: so.data.encode()})
+        try:
+            obj = self.modules[name][label].create_object(attrs)
+            retobj = self._objtoobj(obj)
+            return [retobj]
+        except Exception as error:
+            # TODO: AES import
+            raise HSMError("Raw import not supported yet") from error
 
     def wrap(self, name, label, so: SearchObject):
         return self._deencrypt("wrap_key", name, label, so)
@@ -449,10 +477,22 @@ class HSMModule:  # pylint: disable=too-many-public-methods
     ):
         mechs = self._list_slot_mech(module)
         kdf, sharedinfo, otherpub = mechanism_param
-        mech = KDFtoMech().map(kdf)
+        mech = (
+            "ECDH1_DERIVE"
+            if toexec.__self__.key_type == pkcs11.KeyType.EC_EDWARDS
+            or ECDomainParameters.load(
+                toexec.__self__[pkcs11.Attribute.EC_PARAMS]
+            ).native
+            == "curve25519"
+            else KDFtoMech().map(kdf)
+        )
         if mech in mechs:
             return toexec(
-                keytype, aessize, mechanism_param=mechanism_param, template=template
+                keytype,
+                aessize,
+                mechanism_param=mechanism_param,
+                template=template,
+                mechanism=pkcs11.Mechanism.ECDH1_DERIVE,
             )
 
         hashmethod = mech[mech.index("_") + 1 :]
