@@ -26,7 +26,7 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install --upgrade pip-tools
           make venv
-          sudo apt install softhsm2 libsofthsm2
+          sudo apt install softhsm2 libsofthsm2 gcc-x86-64-linux-gnu
       - uses: actions/cache@v2
         id: cache-venv
         with:
