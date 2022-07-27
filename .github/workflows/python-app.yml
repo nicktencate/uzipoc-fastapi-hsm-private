@@ -1,4 +1,4 @@
-name: Python application
+name: Testing
 
 on:
   push:
@@ -24,6 +24,7 @@ jobs:
         run: |
           sudo apt-get update
           python -m pip install --upgrade pip
+          python -m pip install --upgrade pip-tools
           make venv
           sudo apt install softhsm2 libsofthsm2
       - uses: actions/cache@v2
