@@ -1,11 +1,11 @@
 # Dependency management
-pip-tools
+pip-tools>=6.8
 
 # webdingen
 pydantic
 hypercorn
 fastapi
-python-pkcs11
+#python-pkcs11
 pyyaml
 pycryptodome
 
