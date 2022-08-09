@@ -6,8 +6,14 @@
 #
 anyio==3.5.0
     # via starlette
+asn1crypto==1.5.1
+    # via
+    #   -r requirements.in
+    #   python-pkcs11
 build==0.8.0
     # via pip-tools
+cached-property==1.5.2
+    # via python-pkcs11
 click==8.0.3
     # via pip-tools
 fastapi==0.71.0
@@ -42,6 +48,8 @@ pydantic==1.9.0
     #   fastapi
 pyparsing==3.0.9
     # via packaging
+python-pkcs11==0.7.0
+    # via -r requirements.in
 pyyaml==6.0
     # via -r requirements.in
 sniffio==1.2.0
