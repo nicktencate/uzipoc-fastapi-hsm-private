@@ -1,4 +1,4 @@
-name: Packaging
+name: Create RDO Packages
 
 on:
   push:
@@ -30,7 +30,7 @@ jobs:
         run: python3 -m venv /var/www/html/.venv
 
       - name: pip3 install
-        run: cd /usr/local/harrie5/current; source .venv/bin/activate; pip install -U pip; pip install -r requirements.txt
+        run: cd /var/www/html; source .venv/bin/activate; pip install -U pip; pip install -r requirements.txt
 
       - name: Create archive
         run: tar -zcvf ../harrie14_venv_${{ env.RELEASE_VERSION }}.tar.gz -C /var/www/html/ .venv
