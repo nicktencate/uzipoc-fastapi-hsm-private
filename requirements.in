@@ -5,7 +5,8 @@ pip-tools>=6.8
 pydantic
 hypercorn
 fastapi
-#python-pkcs11
+python-pkcs11
+asn1crypto
 pyyaml
 pycryptodome
 
