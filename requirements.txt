@@ -53,11 +53,10 @@ toml==0.10.2
 tomli==1.1.0
     # via
     #   -r requirements.in
-    #   build
     #   pep517
 typing-extensions==4.0.1
     # via pydantic
-wheel==0.37.1
+wheel==0.38.1
     # via pip-tools
 wsproto==1.0.0
     # via hypercorn
